@@ -77,7 +77,7 @@ def get_ports(ssh: SSHClient, host: Object) -> List[Port]:
 
 
         
-        port_results = re.split("PortID:\s+", result)
+        port_results = re.split("PortID:\s+", result)[1:]
         for port_result in port_results:
             try:
                 lines = re.split("\n", port_result)
@@ -181,22 +181,22 @@ def get_ports(ssh: SSHClient, host: Object) -> List[Port]:
                         Metric(key="rx_96us", value=nintysix[2])
                     )
                     port.add_metric(
-                        Metric(key="rx_228us", value=onetwentyeight[2])
+                        Metric(key="rx_128us", value=onetwentyeight[2])
                     )
                     port.add_metric(
-                        Metric(key="rx_260us", value=onesixty[2])
+                        Metric(key="rx_160us", value=onesixty[2])
                     )
                     port.add_metric(
-                        Metric(key="rx_292us", value=onenintytwo[2])
+                        Metric(key="rx_192us", value=onenintytwo[2])
                     )
                     port.add_metric(
                         Metric(key="rx_256us", value=twofiftysix[2])
                     )
                     port.add_metric(
-                        Metric(key="rx_522us", value=fivetwelve[2])
+                        Metric(key="rx_512us", value=fivetwelve[2])
                     )
                     port.add_metric(
-                        Metric(key="rx_2024us", value=tentwentyfour[2])
+                        Metric(key="rx_1024us", value=tentwentyfour[2])
                     )
                     port.add_metric(
                         Metric(key="rx_2048us", value=twentyfourtyeight[2])
