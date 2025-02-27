@@ -42,6 +42,9 @@ import vdan
 import lan
 import node
 import host
+import vlan
+from vlan import get_vlans
+from vlan import get_switch_property
 from host import get_hosts
 from host import get_host_property
 from vdan import get_vdans
@@ -112,6 +115,7 @@ def get_adapter_definition() -> AdapterDefinition:
         lan.define_metric("rx_bytes", "Rx Bytes")
         lan.define_metric("dup_drops", "Dup Drops")
         lan.define_metric("sup_rx_pkts", "Sup Rx Packats")
+        lan.define_metric("sup_tx_pkts", "Sup Tx Packats")
         lan.define_metric("out_of_order_drops", "Out Of Order Drops")
         lan.define_metric("wrong_lan_drops", "Wrong LAN Drops")
 
@@ -167,7 +171,7 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
         finally:
             return result
 
-def connect(adapter_instance: AdapterInstance) -> Any:
+def connect(adapter_instance: AdapterInstance, client: SuiteApiClient) -> Any:
     """Establishes a connection with the host
 
     :return: ssh client an AVI session object
@@ -180,42 +184,40 @@ def connect(adapter_instance: AdapterInstance) -> Any:
         content = service_instance.RetrieveContent()
         logger.error(f"taskManager: {content.taskManager}")
 
-        with adapter_instance.suite_api_client as client:
-            adapter_instance_id = _get_vcenter_adapter_instance_id(
-                client, adapter_instance
-            )
-            hosts = get_hosts(client, adapter_instance_id, content)
+        adapter_instance_id = _get_vcenter_adapter_instance_id(
+            client, adapter_instance
+        )
+        hosts = get_hosts(client, adapter_instance_id, content)
 
     #Connect to ssh for each host and create client
     ssh_list = {}
 
     with Timer(logger, "create ssh sessions"):
-        with adapter_instance.suite_api_client as client:
-            port = int(adapter_instance.get_identifier_value("ssh_port"))
-            username = adapter_instance.get_credential_value("ssh_username")
-            password = adapter_instance.get_credential_value("ssh_password")
-            for host in hosts:
-                try:
-                    controller = get_host_property(client, host, "net|mgmt_address")
-                    if controller is None:
-                        raise ConnectionError("No host provided")
-                    if "ssh_username" not in adapter_instance.credentials:
-                        raise ConnectionError("No username provided")
-                    if "ssh_password" not in adapter_instance.credentials:
-                        raise ConnectionError("No password provided")
+        port = int(adapter_instance.get_identifier_value("ssh_port"))
+        username = adapter_instance.get_credential_value("ssh_username")
+        password = adapter_instance.get_credential_value("ssh_password")
+        for host in hosts:
+            try:
+                controller = get_host_property(client, host, "net|mgmt_address")
+                if controller is None:
+                    raise ConnectionError("No host provided")
+                if "ssh_username" not in adapter_instance.credentials:
+                    raise ConnectionError("No username provided")
+                if "ssh_password" not in adapter_instance.credentials:
+                    raise ConnectionError("No password provided")
 
-                    ssh = paramiko.SSHClient()
-                    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    ssh.connect(hostname=controller, port=port, username=username, password=password)
-                    ssh_list.update({host.get_key().name: ssh})
-                except paramiko.AuthenticationException:
-                    logger.error("Authentication failed, please verify your credentials")
-                except paramiko.SSHException as sshException:
-                    logger.error(f"Could not establish SSH connection: {sshException}")
-                except Exception as e:
-                    logger.error(f"An error occurred: {e}")
-                else:
-                    logger.info(f'Connected to host({controller})')
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(hostname=controller, port=port, username=username, password=password)
+                ssh_list.update({host.get_key().name: ssh})
+            except paramiko.AuthenticationException:
+                logger.error("Authentication failed, please verify your credentials")
+            except paramiko.SSHException as sshException:
+                logger.error(f"Could not establish SSH connection: {sshException}")
+            except Exception as e:
+                logger.error(f"An error occurred: {e}")
+            else:
+                logger.info(f'Connected to host({controller})')
     
     return hosts, ssh_list
 
@@ -238,17 +240,28 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
 def collect(adapter_instance: AdapterInstance) -> CollectResult:
     with Timer(logger, "Collection"):
         result = CollectResult()
-        hosts, ssh_list = connect(adapter_instance)
+        
+        with adapter_instance.suite_api_client as client:
+            hosts, ssh_list = connect(adapter_instance, client)
+            vlans = get_vlans(client)
         with Timer(logger, "Collect Objects"):
             for host in hosts:
                 try:
                     ssh = ssh_list.get(host.get_key().name)
                     if ssh is None:
                         logger.info(f'Unable to collect from {host.get_key().name}')
-                        logger.info(f"Returning collection result {result.get_json()}")
                     else:
                         vdans, lans = get_vdans(ssh, host)
+                        for vdan in vdans:
+                            #logger.info(f'vdan vlan property({vdan.get_property("vlan_id")[0].value})')
+                            vlan = vlans.get(vdan.get_property('vlan_id')[0].value)
+                            if vlan:
+                                vdan.add_parent(vlan)
                         nodes, nlans = get_nodes(ssh, host)
+                        for node in nodes:
+                            vlan = vlans.get(node.get_property('vlan_id')[0].value)
+                            if vlan:
+                                node.add_parent(vlan)
                         ports = get_ports(ssh, host)
 
                         lans.extend(nlans)
@@ -257,16 +270,17 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         result.add_objects(nodes)
                         result.add_objects(lans)
                         result.add_objects(ports)
-                        logger.info(f"Returning collection result {result.get_json()}")
                         ssh.close()
                 except Exception as e:
                     logger.error(f'Unexpected collection error: {e}')
             try:
                 result.add_objects(hosts)
+                for vlan in vlans.values():
+                    result.add_object(vlan)
             except Exception as e:
                 logger.error(f'Unexpected collection error: {e}')                
 
-    logger.info(f"Returning collection result {result.get_json()}")
+    logger.debug(f"Returning collection result {result.get_json()}")
     return result
 
 
