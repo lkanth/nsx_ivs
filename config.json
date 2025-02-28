@@ -1,5 +1,6 @@
 {
     "container_push_repository": null,
-    "container_repository": null,
-    "default_memory_limit": 1024
+    "container_repository": "aria-ops-docker-prod-local.usw5.packages.broadcom.com/vmware_aria_operations_integration_sdk_mps/nsxivs",
+    "default_memory_limit": 1024,
+    "use_default_registry": false
 }
