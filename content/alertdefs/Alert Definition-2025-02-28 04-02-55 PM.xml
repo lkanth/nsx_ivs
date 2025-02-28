@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?><alertContent>
+    <AlertDefinitions>
+        <AlertDefinition adapterKind="NSXIvS" disableInBasePolicy="true" id="AlertDefinition-63bd4f6a-10a6-45c6-8399-bf94549a49bd" name="Wrong Lan Drops" resourceKind="lan" subType="19" type="15">
+            <State severity="automatic">
+                <SymptomSet applyOn="self" operator="or" ref="SymptomDefinition-3ac1709a-9cd4-46eb-909b-d616604e388f"/>
+                <Impact key="health" type="badge"/>
+            </State>
+        </AlertDefinition>
+    </AlertDefinitions>
+    <SymptomDefinitions>
+        <SymptomDefinition adapterKind="NSXIvS" cancelCycle="2" disableInBasePolicy="true" id="SymptomDefinition-3ac1709a-9cd4-46eb-909b-d616604e388f" name="Wrong Lan Drops_2" resourceKind="lan" symptomDefType="condition_self">
+            <State severity="warning">
+                <Condition key="wrong_lan_drops" operator="&gt;" thresholdType="static" type="metric" value="1.0" valueType="numeric"/>
+            </State>
+        </SymptomDefinition>
+    </SymptomDefinitions>
+</alertContent>
