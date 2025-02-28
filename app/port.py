@@ -220,19 +220,25 @@ def add_switch_relationships(client: SSHClient, vlans_by_name: {}, ports: List[P
             stdin, stdout, stderr = client.exec_command(command)
             error = stderr.read().decode()
             result = stdout.read().decode()
+            port_by_name = {}
+
+            for port in ports:
+                port_by_name.update({port.get_key().name: port})
 
             portset_results = re.split("DvsPortset", result)
             for port_result in portset_results:
                 rows = re.split("\n", port_result)[3:]
                 for row in rows:
                     columns = re.split("\s+", row)
-                    logger.info(f'Client processing: {columns[0]}')
-                    if len(columns) > 2:
+                    if len(columns) > 3:
                         #process columns
-                        port = ports.get(columns[1])
-                        vlan = vlans_by_name.get(columns[5])
-                        logger.info(f'Port({port.get_key().name}) vLAN({vlan.get_key().name})')
-                        port.add_parent(vlan)
+                        port = port_by_name.get(f'PortID: {columns[2]}')
+                        vlan = vlans_by_name.get(columns[6])
+                        if port is None or vlan is None:
+                            logger.debug(f'No Connection Port({columns[2]}:{port}) vLAN({columns[6]}:{vlan})')
+                        else:
+                            logger.debug(f'Connection created - Port({port.get_key().name}) vLAN({vlan.get_key().name})') 
+                            port.add_parent(vlan)
         except paramiko.AuthenticationException:
             logger.error(
                 f'Authentication failed, please verify your credentials'

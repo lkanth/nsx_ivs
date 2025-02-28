@@ -183,7 +183,6 @@ def connect(adapter_instance: AdapterInstance, client: SuiteApiClient) -> Any:
     with Timer(logger, "Retrieve hosts from vCenter"):
         service_instance = _get_service_instance(adapter_instance)
         content = service_instance.RetrieveContent()
-        logger.error(f"taskManager: {content.taskManager}")
 
         adapter_instance_id = _get_vcenter_adapter_instance_id(
             client, adapter_instance
