@@ -212,3 +212,40 @@ def get_ports(ssh: SSHClient, host: Object) -> List[Port]:
     logger.debug(f'Number of ports found: ({len(ports)})')            
     return ports
 
+def add_switch_relationships(client: SSHClient, vlans_by_name: {}, ports: List[Port]):
+    results = {}
+    command = "nsxdp-cli vswitch instance list"
+    with Timer(logger, f'Port to vLAN relationship creation'):
+        try:
+            stdin, stdout, stderr = client.exec_command(command)
+            error = stderr.read().decode()
+            result = stdout.read().decode()
+
+            portset_results = re.split("DvsPortset", result)
+            for port_result in portset_results:
+                rows = re.split("\n", port_result)[3:]
+                for row in rows:
+                    columns = re.split("\s+", row)
+                    logger.info(f'Client processing: {columns[0]}')
+                    if len(columns) > 2:
+                        #process columns
+                        port = ports.get(columns[1])
+                        vlan = vlans_by_name.get(columns[5])
+                        logger.info(f'Port({port.get_key().name}) vLAN({vlan.get_key().name})')
+                        port.add_parent(vlan)
+        except paramiko.AuthenticationException:
+            logger.error(
+                f'Authentication failed, please verify your credentials'
+            )
+        except paramiko.SSHException as sshException:
+            logger.error(
+                f'Could not establish SSH connection: {sshException}'
+            )
+        except Exception as e:
+            logger.error(
+                f'An error occurred: {e}'
+            )
+        else:
+            logger.debug(f'Successfully connected and ran command({command})')
+        finally:
+            logger.debug(f'Results ({result})')

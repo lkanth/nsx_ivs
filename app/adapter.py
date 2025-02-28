@@ -45,6 +45,7 @@ import host
 import vlan
 from vlan import get_vlans
 from vlan import get_switch_property
+from port import add_switch_relationships
 from host import get_hosts
 from host import get_host_property
 from vdan import get_vdans
@@ -263,6 +264,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             if vlan:
                                 node.add_parent(vlan)
                         ports = get_ports(ssh, host)
+                        add_switch_relationships(ssh, vlans, ports)
 
                         lans.extend(nlans)
                         
