@@ -1,3 +1,6 @@
 /logs
 /venv-NSX IvS
 .DS_Store
+/build
+connections.json
+connections.json
