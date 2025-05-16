@@ -17,6 +17,7 @@ from pyVim.connect import Disconnect
 from pyVim.connect import SmartConnect
 
 import aria.ops.adapter_logging as logging
+import constants
 from aria.ops.adapter_instance import AdapterInstance
 from aria.ops.data import Metric
 from aria.ops.data import Property
@@ -63,15 +64,13 @@ def get_adapter_definition() -> AdapterDefinition:
     with Timer(logger, "Get Adapter Definition"):
         definition = AdapterDefinition(ADAPTER_KIND, ADAPTER_NAME)
 
-        definition.define_string_parameter("host", "VCenter Server", description="FQDN or IP address of the vCenter Server instance.")
-        definition.define_int_parameter("port", "Port", default=443)
+        definition.define_string_parameter(constants.HOST_IDENTIFIER, "vCenter Server", description="FQDN or IP address of the vCenter Server Instance.")
+        definition.define_int_parameter(constants.PORT_IDENTIFIER, "vCenter Port", default=443)
         definition.define_int_parameter("ssh_port", "SSH Port", default=22)
 
-        credential = definition.define_credential_type(
-            "isv_credentials", "NSX IsV Credential"
-        )
-        credential.define_string_parameter("vcenter_username", "VCenter Username")
-        credential.define_password_parameter("vcenter_password", "VCenter Password")
+        credential = definition.define_credential_type("isv_credentials", "NSX IsV Credential")
+        credential.define_string_parameter(constants.USER_CREDENTIAL, "VCenter Username")
+        credential.define_password_parameter(constants.PASSWORD_CREDENTIAL, "VCenter Password")
         credential.define_string_parameter("ssh_username", "SSH Username")
         credential.define_password_parameter("ssh_password", "SSH Password")
 
@@ -160,17 +159,20 @@ def get_adapter_definition() -> AdapterDefinition:
         return definition
 
 
+'''
 def test(adapter_instance: AdapterInstance) -> TestResult:
     with Timer(logger, "Test"):
-        result = TestResult()
+        result = TestResult()        
         try:
-            connect(adapter_instance)
+            connect(adapter_instance, adapter_instance.suite_api_client)
         except ConnectionError as connection_error:
             result.with_error(f"Connection error: {connection_error.args}")
         except Exception as unexpected_error:
             result.with_error(f"Unexpected API error: {unexpected_error.args}")
         finally:
+            logger.debug(f"Returning connect test result: {result.get_json()}")
             return result
+'''
 
 def connect(adapter_instance: AdapterInstance, client: SuiteApiClient) -> Any:
     """Establishes a connection with the host
@@ -221,21 +223,34 @@ def connect(adapter_instance: AdapterInstance, client: SuiteApiClient) -> Any:
     
     return hosts, ssh_list
 
-def test(adapter_instance: AdapterInstance) -> TestResult:
-    with Timer(logger, "Test connection"):
-        result = TestResult()
-        try:
-            logger.debug(f"Returning test result: {result.get_json()}")
+def get_host(adapter_instance: AdapterInstance) -> str:
+    """
+    Helper method that gets the host and prepends the https protocol to the host if
+    the protocol is not present
+    :param adapter_instance: Adapter Instance object that holds the configuration
+    :return: The host, including the protocol
+    """
+    host = adapter_instance.get_identifier_value("host")
+    if host.startswith("http"):
+        return str(host)
+    else:
+        return f"https://{host}"
 
+def test(adapter_instance: AdapterInstance) -> TestResult:
+    with Timer(logger, "Test connection"):       
+        result = TestResult()        
+        try:            
+            logger.debug(f"Returning test result: {result.get_json()}")
             service_instance = _get_service_instance(adapter_instance)
             content = service_instance.RetrieveContent()
-
+            logger.info(f"content: {content}")
         except Exception as e:
             logger.error("Unexpected connection test error")
             logger.exception(e)
             result.with_error("Unexpected connection test error: " + repr(e))
         finally:
             return result
+
 
 def collect(adapter_instance: AdapterInstance) -> CollectResult:
     with Timer(logger, "Collection"):
@@ -314,14 +329,12 @@ def get_endpoints(adapter_instance: AdapterInstance) -> EndpointResult:
 def _get_service_instance(
     adapter_instance: AdapterInstance,
 ) -> Any:  # vim.ServiceInstance
-    host = adapter_instance.get_identifier_value(HOST_IDENTIFIER)
-    port = int(adapter_instance.get_identifier_value(PORT_IDENTIFIER, 443))
-    user = adapter_instance.get_credential_value(USER_CREDENTIAL)
-    password = adapter_instance.get_credential_value(PASSWORD_CREDENTIAL)
-
-    service_instance = SmartConnect(
-        host=host, port=port, user=user, pwd=password, disableSslCertValidation=True
-    )
+    host = adapter_instance.get_identifier_value(constants.HOST_IDENTIFIER)
+    port = int(adapter_instance.get_identifier_value(constants.PORT_IDENTIFIER, 443))
+    user = adapter_instance.get_credential_value(constants.USER_CREDENTIAL)
+    password = adapter_instance.get_credential_value(constants.PASSWORD_CREDENTIAL)
+    
+    service_instance = SmartConnect(host=host, port=port, user=user, pwd=password, disableSslCertValidation=True)
 
     # doing this means you don't need to remember to disconnect your script/objects
     atexit.register(Disconnect, service_instance)
