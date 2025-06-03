@@ -58,7 +58,7 @@ def get_nodes(ssh: SSHClient, host: Object):
         try:
             stdin, stdout, stderr = ssh.exec_command(command)
             error = stderr.read().decode()
-            result = stdout.read().decode()
+            result = stdout.read().decode()            
         except paramiko.AuthenticationException:
             logger.error(
                 f'Authentication failed, please verify your credentials'

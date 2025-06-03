@@ -2,7 +2,9 @@
 #  SPDX-License-Identifier: Apache-2.0
 import logging
 import re
+import json
 from typing import List
+from typing import Any
 import traceback
 from aria.ops.timer import Timer
 import constants
@@ -11,6 +13,7 @@ from aria.ops.object import Identifier
 from aria.ops.object import Key
 from aria.ops.object import Object
 import paramiko
+from aria.ops.suite_api_client import SuiteApiClient
 from paramiko import SSHClient
 
 
@@ -50,14 +53,17 @@ def get_ports(ssh: SSHClient, host: Object) -> List[Port]:
     """
     ports = []
     results = {}
-    command = "nsxdp-cli ens latency system dump"
+    commands = ['nsxdp-cli ens latency system dump -s 0', 'nsxdp-cli ens latency system clear -s 0']
+    results = []
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'{host.get_key().name} Port Collection'):
         try:
-            stdin, stdout, stderr = ssh.exec_command(command)
-            error = stderr.read().decode()
-            result = stdout.read().decode()
+            for command in commands:
+                stdin, stdout, stderr = ssh.exec_command(command)
+                error = stderr.read().decode()
+                output = stdout.read().decode()
+                results.append(output)
         except paramiko.AuthenticationException:
             logger.error(
                 f'Authentication failed, please verify your credentials'
@@ -73,11 +79,10 @@ def get_ports(ssh: SSHClient, host: Object) -> List[Port]:
         else:
             logger.debug(f'Successfully connected and ran command({command})')
         finally:
-            logger.debug(f'Results ({result})')
+            logger.debug(f'Results ({results})')
 
 
-        
-        port_results = re.split("PortID:\s+", result)[1:]
+        port_results = re.split("PortID:\s+", results[0])[1:]        
         for port_result in port_results:
             try:
                 lines = re.split("\n", port_result)
@@ -93,18 +98,7 @@ def get_ports(ssh: SSHClient, host: Object) -> List[Port]:
                     min_latency = re.split("\s+", lines[3])
                     max_latency = re.split("\s+", lines[4])
                     mean_line = re.split("\s+", lines[5])
-                    max_line = re.split("\s+", lines[6])
-                    thirtytwo = re.split("\s+", lines[7])
-                    sixtyfour = re.split("\s+", lines[8])
-                    nintysix = re.split("\s+", lines[9])
-                    onetwentyeight = re.split("\s+", lines[10])
-                    onesixty = re.split("\s+", lines[11])
-                    onenintytwo = re.split("\s+", lines[12])
-                    twofiftysix = re.split("\s+", lines[13])
-                    fivetwelve = re.split("\s+", lines[14])
-                    tentwentyfour = re.split("\s+", lines[15])
-                    twentyfourtyeight = re.split("\s+", lines[16])
-                    fourtyninetysix = re.split("\s+", lines[17])
+                    max_line = re.split("\s+", lines[6])                   
 
                     port.add_metric(
                         Metric(key="tx_total_samples", value=samples_line[1])
@@ -125,39 +119,7 @@ def get_ports(ssh: SSHClient, host: Object) -> List[Port]:
                     port.add_metric(
                         Metric(key="tx_max", value=max_line[1])
                     )
-                    port.add_metric(
-                        Metric(key="tx_32us", value=thirtytwo[1])
-                    )
-                    port.add_metric(
-                        Metric(key="tx_64us", value=sixtyfour[1])
-                    )
-                    port.add_metric(
-                        Metric(key="tx_96us", value=nintysix[1])
-                    )
-                    port.add_metric(
-                        Metric(key="tx_128us", value=onetwentyeight[1])
-                    )
-                    port.add_metric(
-                        Metric(key="tx_160us", value=onesixty[1])
-                    )
-                    port.add_metric(
-                        Metric(key="tx_192us", value=onenintytwo[1])
-                    )
-                    port.add_metric(
-                        Metric(key="tx_256us", value=twofiftysix[1])
-                    )
-                    port.add_metric(
-                        Metric(key="tx_512us", value=fivetwelve[1])
-                    )
-                    port.add_metric(
-                        Metric(key="tx_1024us", value=tentwentyfour[1])
-                    )
-                    port.add_metric(
-                        Metric(key="tx_2048us", value=twentyfourtyeight[1])
-                    )
-                    port.add_metric(
-                        Metric(key="tx_4096us", value=fourtyninetysix[1])
-                    )
+                    
                 
                     port.add_metric(
                         Metric(key="rx_min_latency", value=min_latency[2])
@@ -171,39 +133,7 @@ def get_ports(ssh: SSHClient, host: Object) -> List[Port]:
                     port.add_metric(
                         Metric(key="rx_max", value=max_line[2])
                     )
-                    port.add_metric(
-                        Metric(key="rx_32us", value=thirtytwo[2])
-                    )
-                    port.add_metric(
-                        Metric(key="rx_64us", value=sixtyfour[2])
-                    )
-                    port.add_metric(
-                        Metric(key="rx_96us", value=nintysix[2])
-                    )
-                    port.add_metric(
-                        Metric(key="rx_128us", value=onetwentyeight[2])
-                    )
-                    port.add_metric(
-                        Metric(key="rx_160us", value=onesixty[2])
-                    )
-                    port.add_metric(
-                        Metric(key="rx_192us", value=onenintytwo[2])
-                    )
-                    port.add_metric(
-                        Metric(key="rx_256us", value=twofiftysix[2])
-                    )
-                    port.add_metric(
-                        Metric(key="rx_512us", value=fivetwelve[2])
-                    )
-                    port.add_metric(
-                        Metric(key="rx_1024us", value=tentwentyfour[2])
-                    )
-                    port.add_metric(
-                        Metric(key="rx_2048us", value=twentyfourtyeight[2])
-                    )
-                    port.add_metric(
-                        Metric(key="rx_4096us", value=fourtyninetysix[2])
-                    )
+                    
                     port.add_parent(host)
                     ports.append(port)  
             except Exception as e:
@@ -212,8 +142,9 @@ def get_ports(ssh: SSHClient, host: Object) -> List[Port]:
     logger.debug(f'Number of ports found: ({len(ports)})')            
     return ports
 
-def add_switch_relationships(client: SSHClient, vlans_by_name: {}, ports: List[Port]):
-    results = {}
+def add_port_relationships(client: SSHClient, vlans_by_name: {}, ports: List[Port], vmsByName: {}, suiteAPIClient) -> List:
+    RelAddedToVMObjects = []   
+    delimiterChar = "."    
     command = "nsxdp-cli vswitch instance list"
     with Timer(logger, f'Port to vLAN relationship creation'):
         try:
@@ -221,24 +152,60 @@ def add_switch_relationships(client: SSHClient, vlans_by_name: {}, ports: List[P
             error = stderr.read().decode()
             result = stdout.read().decode()
             port_by_name = {}
-
             for port in ports:
                 port_by_name.update({port.get_key().name: port})
+            
 
             portset_results = re.split("DvsPortset", result)
             for port_result in portset_results:
                 rows = re.split("\n", port_result)[3:]
-                for row in rows:
-                    columns = re.split("\s+", row)
+                numOfRows = len(rows)                            
+                for rowIndex in range(numOfRows):
+                    columns = re.split("\s+", rows[rowIndex])                    
                     if len(columns) > 3:
                         #process columns
-                        port = port_by_name.get(f'PortID: {columns[2]}')
+                        port = port_by_name.get(f'PortID: {columns[2]}')                        
                         vlan = vlans_by_name.get(columns[6])
                         if port is None or vlan is None:
                             logger.debug(f'No Connection Port({columns[2]}:{port}) vLAN({columns[6]}:{vlan})')
                         else:
-                            logger.debug(f'Connection created - Port({port.get_key().name}) vLAN({vlan.get_key().name})') 
+                            logger.debug(f'Connection created - Port({port.get_key().name}) vLAN({vlan.get_key().name})')                            
                             port.add_parent(vlan)
+                        
+                        if port is not None:
+                            vmNICMacaddress = columns[4].strip()
+                            clientName = columns[1].strip()
+                            subRowIndex = rowIndex
+                            while ((subRowIndex + 1) < numOfRows):                                
+                                subRowIndex += 1                                    
+                                nextRowColumns = re.split("\s+", rows[subRowIndex])                               
+                                numOfColumns = len(nextRowColumns)                                
+                                if(numOfColumns >= 2 and nextRowColumns[2].strip() == ""):
+                                    clientName = clientName + nextRowColumns[1].strip()
+                                else:                                    
+                                    break                             
+                                                      
+                            vmName = ""
+                            lastIndex = clientName.rfind(delimiterChar)
+                            if lastIndex != -1:
+                                vmName = clientName[:lastIndex]                                                           
+                                vms = vmsByName.get(vmName)
+                                if port is None or vms is None:
+                                    logger.info(f'No Connection Port({columns[2]}:{port}) VM({vmName}:{vms})')
+                                else:                       
+                                    if len(vms) == 1:                                        
+                                        port.add_parent(vms[0])
+                                        RelAddedToVMObjects.append(vms[0])                                        
+                                    elif len(vms) > 1:
+                                        vmMOID = getVMMOID(suiteAPIClient,vms,vmName, vmNICMacaddress)
+                                        for vm in vms:                                            
+                                            if vm.get_identifier_value("VMEntityObjectID") == vmMOID:                                                
+                                                port.add_parent(vm)
+                                                RelAddedToVMObjects.append(vm)
+                                    else:
+                                        logger.info(f'No Connection Port({columns[2]}:{port}) VM({vmName}:{vms})')
+                                        
+
         except paramiko.AuthenticationException:
             logger.error(
                 f'Authentication failed, please verify your credentials'
@@ -254,4 +221,39 @@ def add_switch_relationships(client: SSHClient, vlans_by_name: {}, ports: List[P
         else:
             logger.debug(f'Successfully connected and ran command({command})')
         finally:
-            logger.debug(f'Results ({result})')
+            logger.debug(f'Results ({result})')    
+    return RelAddedToVMObjects
+
+def getVMMOID(suite_api_client: SuiteApiClient, vms: List, vmName: str, vmNICMacaddress: str ) -> str:
+    try:
+        vmResourceIDs = []
+        MAC_ADDRESS_PROPERTY_NAME = "mac_address"
+        VM_MOID_PROPERTY_NAME = "summary|MOID"
+        vmMOID = ""
+        vmResourceIDsStr=""
+        vmsResponse = suite_api_client.get(f'/api/resources?name={vmName}&adapterKind=VMWARE&resourceKind=VirtualMachine&_no_links=true')  
+        vmResourceList = json.loads(vmsResponse.content)["resourceList"]
+        for vmResource in vmResourceList:
+            vmResourceIDs.append(vmResource["identifier"]) 
+        for vmResourceID in vmResourceIDs:
+            vmResourceIDsStr = vmResourceIDsStr + "resourceId=" + vmResourceID + "&"
+        
+        propResponse = suite_api_client.get(f'/api/resources/properties?{vmResourceIDsStr}_no_links=true')
+        resourcePropertiesList = json.loads(propResponse.content)["resourcePropertiesList"]
+        for resourceProperty in resourcePropertiesList:            
+            propList = resourceProperty["property"]
+            for prop in propList:
+                if MAC_ADDRESS_PROPERTY_NAME in prop["name"]:
+                    if vmNICMacaddress == prop["value"]:
+                        for propID in propList:
+                            if propID["name"] == VM_MOID_PROPERTY_NAME:
+                                vmMOID = propID["value"]
+                                return vmMOID                  
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        return None
+    
+    logger.info(f'Response: {vmsResponse.content}')
+    return None
+
+

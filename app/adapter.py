@@ -44,13 +44,15 @@ import lan
 import node
 import host
 import vlan
+import vm
 from vlan import get_vlans
 from vlan import get_switch_property
-from port import add_switch_relationships
+from port import add_port_relationships
 from host import get_hosts
 from host import get_host_property
 from vdan import get_vdans
 from node import get_nodes
+from vm import get_vms
 logger = logging.getLogger(__name__)
 
 
@@ -127,54 +129,16 @@ def get_adapter_definition() -> AdapterDefinition:
         port.define_metric("tx_min_latency", "Minimum Latency - Transmit")
         port.define_metric("tx_max_latency", "Maximum Latency - Transmit")
         port.define_metric("tx_mean", "Mean - Transmit")
-        port.define_metric("tx_max", "Max - Transmit")
-        port.define_metric("tx_32us", "32us - Transmit")
-        port.define_metric("tx_64us", "64us - Transmit")
-        port.define_metric("tx_96us", "96us - Transmit")
-        port.define_metric("tx_128us", "128us - Transmit")
-        port.define_metric("tx_160us", "160us - Transmit")
-        port.define_metric("tx_192us", "192us - Transmit")
-        port.define_metric("tx_256us", "256us - Transmit")
-        port.define_metric("tx_512us", "512us - Transmit")
-        port.define_metric("tx_1024us", "1024us - Transmit")
-        port.define_metric("tx_2048us", "2048us - Transmit")
-        port.define_metric("tx_4096us", "4096us - Transmit")
+        port.define_metric("tx_max", "Max - Transmit")       
         port.define_metric("rx_total_samples", "Total Samples - Received")
         port.define_metric("rx_min_latency", "Minimum Latency - Received")
         port.define_metric("rx_max_latency", "Maximum Latency - Received")
         port.define_metric("rx_mean", "Mean - Received")
-        port.define_metric("rx_max", "Max - Received")
-        port.define_metric("rx_32us", "32us - Received")
-        port.define_metric("rx_64us", "64us - Received")
-        port.define_metric("rx_96us", "96us - Received")
-        port.define_metric("rx_128us", "128us - Received")
-        port.define_metric("rx_160us", "160us - Received")
-        port.define_metric("rx_192us", "192us - Received")
-        port.define_metric("rx_256us", "256us - Received")
-        port.define_metric("rx_512us", "512us - Received")
-        port.define_metric("rx_1024us", "1024us - Received")
-        port.define_metric("rx_2048us", "2048us - Received")
-        port.define_metric("rx_4096us", "4096us - Received")
+        port.define_metric("rx_max", "Max - Received")       
 
         return definition
 
-
-'''
-def test(adapter_instance: AdapterInstance) -> TestResult:
-    with Timer(logger, "Test"):
-        result = TestResult()        
-        try:
-            connect(adapter_instance, adapter_instance.suite_api_client)
-        except ConnectionError as connection_error:
-            result.with_error(f"Connection error: {connection_error.args}")
-        except Exception as unexpected_error:
-            result.with_error(f"Unexpected API error: {unexpected_error.args}")
-        finally:
-            logger.debug(f"Returning connect test result: {result.get_json()}")
-            return result
-'''
-
-def connect(adapter_instance: AdapterInstance, client: SuiteApiClient) -> Any:
+def connect(adapter_instance: AdapterInstance, adapter_instance_id, client: SuiteApiClient, content) -> Any:
     """Establishes a connection with the host
 
     :return: ssh client an AVI session object
@@ -182,15 +146,8 @@ def connect(adapter_instance: AdapterInstance, client: SuiteApiClient) -> Any:
     """
 
     # Get all hosts
-    with Timer(logger, "Retrieve hosts from vCenter"):
-        service_instance = _get_service_instance(adapter_instance)
-        content = service_instance.RetrieveContent()
-
-        adapter_instance_id = _get_vcenter_adapter_instance_id(
-            client, adapter_instance
-        )
-        hosts = get_hosts(client, adapter_instance_id, content)
-
+    with Timer(logger, "Retrieve hosts from vCenter"):       
+        hosts = get_hosts(client, adapter_instance_id, content)        
     #Connect to ssh for each host and create client
     ssh_list = {}
 
@@ -243,7 +200,7 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
             logger.debug(f"Returning test result: {result.get_json()}")
             service_instance = _get_service_instance(adapter_instance)
             content = service_instance.RetrieveContent()
-            logger.info(f"content: {content}")
+            # logger.info(f"content: {content}")
         except Exception as e:
             logger.error("Unexpected connection test error")
             logger.exception(e)
@@ -257,44 +214,55 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
         result = CollectResult()
         
         with adapter_instance.suite_api_client as client:
-            hosts, ssh_list = connect(adapter_instance, client)
+            service_instance = _get_service_instance(adapter_instance)
+            content = service_instance.RetrieveContent()
+            adapter_instance_id = _get_vcenter_adapter_instance_id(client, adapter_instance)
+            hosts, ssh_list = connect(adapter_instance, adapter_instance_id, client, content)            
             vlans = get_vlans(client)
-        with Timer(logger, "Collect Objects"):
-            for host in hosts:
+            RelAddedToVMObjects = []
+            with Timer(logger, "Collect Objects"):
+                for host in hosts:
+                    try:
+                        ssh = ssh_list.get(host.get_key().name)
+                        if ssh is None:
+                            logger.info(f'Unable to collect from {host.get_key().name}')
+                        else:
+                            vdans, lans = get_vdans(ssh, host)
+                            for vdan in vdans:
+                                #logger.info(f'vdan vlan property({vdan.get_property("vlan_id")[0].value})')
+                                vlan = vlans.get(vdan.get_property('vlan_id')[0].value)
+                                if vlan:
+                                    vdan.add_parent(vlan)
+                            nodes, nlans = get_nodes(ssh, host)
+                            for node in nodes:
+                                vlan = vlans.get(node.get_property('vlan_id')[0].value)
+                                if vlan:
+                                    node.add_parent(vlan)
+                            ports = get_ports(ssh, host)
+                            vmsByName = get_vms(client, adapter_instance_id, content, host.get_key().name)                                                    
+                            vmObjectList = add_port_relationships(ssh, vlans, ports, vmsByName, client)
+                            if len(vmObjectList) > 0:
+                                for vmObject in vmObjectList:
+                                    RelAddedToVMObjects.append(vmObject)
+                                              
+                           
+                            lans.extend(nlans)
+                            
+                            result.add_objects(vdans)
+                            result.add_objects(nodes)
+                            result.add_objects(lans)
+                            result.add_objects(ports)
+                            ssh.close()
+                    except Exception as e:
+                        logger.error(f'Unexpected collection error: {e}')
                 try:
-                    ssh = ssh_list.get(host.get_key().name)
-                    if ssh is None:
-                        logger.info(f'Unable to collect from {host.get_key().name}')
-                    else:
-                        vdans, lans = get_vdans(ssh, host)
-                        for vdan in vdans:
-                            #logger.info(f'vdan vlan property({vdan.get_property("vlan_id")[0].value})')
-                            vlan = vlans.get(vdan.get_property('vlan_id')[0].value)
-                            if vlan:
-                                vdan.add_parent(vlan)
-                        nodes, nlans = get_nodes(ssh, host)
-                        for node in nodes:
-                            vlan = vlans.get(node.get_property('vlan_id')[0].value)
-                            if vlan:
-                                node.add_parent(vlan)
-                        ports = get_ports(ssh, host)
-                        add_switch_relationships(ssh, vlans, ports)
-
-                        lans.extend(nlans)
-                        
-                        result.add_objects(vdans)
-                        result.add_objects(nodes)
-                        result.add_objects(lans)
-                        result.add_objects(ports)
-                        ssh.close()
+                    result.add_objects(hosts)                    
+                    for vm in RelAddedToVMObjects:                                        
+                        result.add_object(vm)
+                    for vlan in vlans.values():
+                        result.add_object(vlan)
                 except Exception as e:
-                    logger.error(f'Unexpected collection error: {e}')
-            try:
-                result.add_objects(hosts)
-                for vlan in vlans.values():
-                    result.add_object(vlan)
-            except Exception as e:
-                logger.error(f'Unexpected collection error: {e}')                
+                    logger.error(f'Unexpected collection error: {e}')                
 
     logger.debug(f"Returning collection result {result.get_json()}")
     return result

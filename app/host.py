@@ -50,7 +50,7 @@ def get_hosts(
         else:
             logger.warning(
                 f"Could not find HostSystem {host_system.config.summary.name} with id '{h}'."
-            )
+            )    
     return result
     
 def get_host_property(

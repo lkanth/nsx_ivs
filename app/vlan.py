@@ -25,7 +25,7 @@ def get_vlans(
             }
         )
 
-        switch_by_name = {}
+        switch_by_name = {}        
 
         for switch in switches:
             if (re.findall("vlan-", switch.get_key().name)):
@@ -33,7 +33,7 @@ def get_vlans(
     except Exception as e:
         logger.error(f"An error occurred: {e}")
         return None
-#    logger.info(switch_by_name)
+    
     return switch_by_name
     
 def get_switch_property(
