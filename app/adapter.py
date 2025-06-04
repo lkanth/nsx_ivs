@@ -238,13 +238,12 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                                 vlan = vlans.get(node.get_property('vlan_id')[0].value)
                                 if vlan:
                                     node.add_parent(vlan)
-                            ports = get_ports(ssh, host)
+                            ports, vSwitchInstanceListCmdOutput = get_ports(ssh, host)
                             vmsByName = get_vms(client, adapter_instance_id, content, host.get_key().name)                                                    
-                            vmObjectList = add_port_relationships(ssh, vlans, ports, vmsByName, client)
+                            vmObjectList = add_port_relationships(vSwitchInstanceListCmdOutput, vlans, ports, vmsByName, client)
                             if len(vmObjectList) > 0:
                                 for vmObject in vmObjectList:
-                                    RelAddedToVMObjects.append(vmObject)
-                                              
+                                    RelAddedToVMObjects.append(vmObject)                                             
                            
                             lans.extend(nlans)
                             
