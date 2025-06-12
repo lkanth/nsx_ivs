@@ -12,8 +12,7 @@ from aria.ops.object import Key
 from aria.ops.object import Object
 import paramiko
 from paramiko import SSHClient
-import lan
-from lan import get_lan
+
 
 logger = logging.getLogger(__name__)
 
@@ -98,21 +97,6 @@ def get_nodes(ssh: SSHClient, host: Object):
                     lnode.add_metric(
                         Metric(key="node_age", value=columns[4])
                     )
-
-                    lan = get_lan(result=columns[5:], vdan=mac, host=host.get_key().name)
-                    lan.add_parent(lnode)
-                    llans.append(lan)
-                    #add second row
-                    i += 1
-                    columns = re.split("\s+", node_results[i])
-                    if not(columns[0].isnumeric()):
-                        lan = get_lan(result=columns[1:], vdan=mac, host=host.get_key().name)
-                        lan.add_parent(lnode)
-                        llans.append(lan)
-                        i += 1
-                    logger.debug(
-                        f'Added new node: {lnode.uuid}'
-                    )
                     lnode.add_parent(host)
                     nodes.append(lnode)
                 else:
@@ -122,5 +106,5 @@ def get_nodes(ssh: SSHClient, host: Object):
                 f'Error processing ssh command results: {e} - {traceback.format_exc()}'
             )
 
-    return nodes, llans
+    return nodes
 

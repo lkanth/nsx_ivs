@@ -25,7 +25,7 @@ class Port(Object):
     def __init__(self, name: str, uuid: str, host: str):
         """Initializes a Tenant object that represent the ResourceKind defined in line 15 of the describe.xml file.
 
-        :param name: The  unique name of used to display the tenant
+        :param name: The unique name of used to display the tenant
         :param uuid: A Universal Unique Identifier for the Tenant
         :param url: A URL with the AVI controller, and the tenant's UUID
         """
@@ -53,7 +53,6 @@ def get_ports(ssh: SSHClient, host: Object):
     """
     uplinkPorts = []
     ports = []
-    results = {}
     commands = ['nsxdp-cli ens latency system dump -s 0', 'nsxdp-cli ens latency system dump -s 1', 'nsxdp-cli ens latency system clear -s 0', 'nsxdp-cli ens latency system clear -s 1', 'nsxdp-cli vswitch instance list']
     results = []
     vSwitchInstanceListCmdOutput = ""
@@ -116,7 +115,7 @@ def get_ports(ssh: SSHClient, host: Object):
                                     min_latency = re.split("\s+", lines[3])
                                     max_latency = re.split("\s+", lines[4])
                                     mean_line = re.split("\s+", lines[5])
-                                    max_line = re.split("\s+", lines[6])                   
+                                                       
 
                                     port.add_metric(
                                         Metric(key="tx_total_samples", value=samples_line[1])
@@ -134,9 +133,6 @@ def get_ports(ssh: SSHClient, host: Object):
                                     port.add_metric(
                                         Metric(key="tx_mean", value=mean_line[1])
                                     )
-                                    port.add_metric(
-                                        Metric(key="tx_max", value=max_line[1])
-                                    )
                                     
                                 
                                     port.add_metric(
@@ -148,9 +144,7 @@ def get_ports(ssh: SSHClient, host: Object):
                                     port.add_metric(
                                         Metric(key="rx_mean", value=mean_line[2])
                                     )
-                                    port.add_metric(
-                                        Metric(key="rx_max", value=max_line[2])
-                                    )
+                                    
 
                                     port.add_parent(host)
                                     ports.append(port) 

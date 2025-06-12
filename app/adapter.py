@@ -52,6 +52,7 @@ from host import get_hosts
 from host import get_host_property
 from vdan import get_vdans
 from node import get_nodes
+from lan import get_lans
 from vm import get_vms
 logger = logging.getLogger(__name__)
 
@@ -106,9 +107,18 @@ def get_adapter_definition() -> AdapterDefinition:
         node.define_metric("node_age", "Node Age")
 
         lan = definition.define_object_type("lan", "LAN")
-        lan.define_string_identifier("uuid", "UUID")
-        lan.define_string_identifier("vdan", "Parent")
+        lan.define_string_identifier("lan", "LAN")        
         lan.define_string_identifier("host", "ESXi Server")
+        lan.define_string_identifier("switchID", "Switch ID")
+        lan.define_string_property("name", "Name")
+        lan.define_string_property("uplink1", "Uplink 1")
+        lan.define_string_property("uplink2", "Uplink 2")
+        lan.define_string_property("policy", "Policy")
+        lan.define_string_property("status", "Status")
+        lan.define_string_property("esxi", "ESXi Host")
+        lan.define_numeric_property("switch", "Switch")
+        
+        '''
         lan.define_metric("prp_rx_pkts", "MAC Address")
         lan.define_metric("non_prp_rx_pkts", "vLAN")
         lan.define_metric("tx_bytes", "Tx Bytes")
@@ -120,6 +130,7 @@ def get_adapter_definition() -> AdapterDefinition:
         lan.define_metric("sup_tx_pkts", "Sup Tx Packats")
         lan.define_metric("out_of_order_drops", "Out Of Order Drops")
         lan.define_metric("wrong_lan_drops", "Wrong LAN Drops")
+        '''
 
         port = definition.define_object_type("port", "Port")
         port.define_string_identifier("port", "Port")
@@ -227,25 +238,25 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         if ssh is None:
                             logger.info(f'Unable to collect from {host.get_key().name}')
                         else:
-                            vdans, lans = get_vdans(ssh, host)
+                            vdans = get_vdans(ssh, host)
                             for vdan in vdans:
                                 #logger.info(f'vdan vlan property({vdan.get_property("vlan_id")[0].value})')
                                 vlan = vlans.get(vdan.get_property('vlan_id')[0].value)
                                 if vlan:
                                     vdan.add_parent(vlan)
-                            nodes, nlans = get_nodes(ssh, host)
+                            nodes = get_nodes(ssh, host)
                             for node in nodes:
                                 vlan = vlans.get(node.get_property('vlan_id')[0].value)
                                 if vlan:
                                     node.add_parent(vlan)
+                            lans = get_lans(ssh, host)
+                            logger.info(f'LM-A LANS: {lans}')
                             ports, vSwitchInstanceListCmdOutput = get_ports(ssh, host)
                             vmsByName = get_vms(client, adapter_instance_id, content, host.get_key().name)                                                    
                             vmObjectList = add_port_relationships(vSwitchInstanceListCmdOutput, vlans, ports, vmsByName, client)
                             if len(vmObjectList) > 0:
                                 for vmObject in vmObjectList:
-                                    RelAddedToVMObjects.append(vmObject)                                             
-                           
-                            lans.extend(nlans)
+                                    RelAddedToVMObjects.append(vmObject)                                            
                             
                             result.add_objects(vdans)
                             result.add_objects(nodes)

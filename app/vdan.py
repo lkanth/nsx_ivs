@@ -12,8 +12,8 @@ from aria.ops.object import Key
 from aria.ops.object import Object
 import paramiko
 from paramiko import SSHClient
-import lan
-from lan import get_lan
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -97,22 +97,8 @@ def get_vdans(ssh: SSHClient, host: Object):
                     vdan.with_property("fc_port_id", columns[3])
                     vdan.add_metric(
                         Metric(key="vdan_age", value=columns[4])
-                    )
-                    
-                    lan = get_lan(result=columns[5:], vdan=mac, host=host.get_key().name)
-                    lan.add_parent(vdan)
-                    llans.append(lan)
-                    #add second row
-                    i += 1
-                    columns = re.split("\s+", vdan_results[i])
-                    if not(columns[0].isnumeric()):
-                        lan = get_lan(result=columns[1:], vdan=mac, host=host.get_key().name)
-                        lan.add_parent(vdan)
-                        llans.append(lan)
-                        i += 1
-                    logger.debug(
-                        f'Added new vDAN: {vdan.uuid}'
-                    )
+                    )                    
+                  
                     vdan.add_parent(host)
                     vdans.append(vdan)
                 else:
@@ -122,4 +108,4 @@ def get_vdans(ssh: SSHClient, host: Object):
                 f'Error processing ssh command results: {e} - {traceback.format_exc()}'
             )
 
-    return vdans, llans
+    return vdans
