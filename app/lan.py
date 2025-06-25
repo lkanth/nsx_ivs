@@ -58,7 +58,7 @@ def get_lans(ssh: SSHClient, host: Object):
     results = []
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
-    with Timer(logger, f'{host.get_key().name} Port Collection'):
+    with Timer(logger, f'{host.get_key().name} LAN Collection'):
         try:
             for command in commands:
                 stdin, stdout, stderr = ssh.exec_command(command)
@@ -97,7 +97,7 @@ def get_lans(ssh: SSHClient, host: Object):
                         for lanItem in lanList:
                             if "status" in parsed_lan_output[lanItem]:                                
                                 uuid = lanItem + "_" + hostname + "_switch_" + switchIDStr
-                                lan = Lan(name=uuid, uuid=uuid, host=hostname, switchID=switchIDStr)                               
+                                lan = Lan(name=lanItem, uuid=uuid, host=hostname, switchID=switchIDStr)                               
                                 lan.with_property("esxi", hostname)
                                 lan.with_property("switch", switchID)
                                 lan.with_property("status", parsed_lan_output[lanItem]["status"])

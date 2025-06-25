@@ -12,6 +12,8 @@ from aria.ops.object import Key
 from aria.ops.object import Object
 import paramiko
 from paramiko import SSHClient
+import port
+from port import getVMMOID
 
 
 
@@ -48,10 +50,9 @@ def get_vdans(ssh: SSHClient, host: Object):
     :param api: AVISession object
     :return: A list of all Switch Objects collected, along with their properties, and metrics
     """
-    vdans = []
-    llans = []
-    results = {}
+    vdanObjects = []
     command = "nsxdp-cli ens prp stats vdan list"
+    hostName = host.get_key().name
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'{host.get_key().name} vDAN Collection'):
@@ -77,35 +78,144 @@ def get_vdans(ssh: SSHClient, host: Object):
             )
 
         try:
-            vdan_results = re.split("\n", result)
-            i = 2
-
-            while i < len(vdan_results):
-                columns = re.split("\s+", vdan_results[i])
-                if columns[0].isnumeric():
-                    uuid = columns[0]
-                    mac = columns[1]
-                    vdan = vDAN(
-                        name="vdanIndex: " + uuid,
+            vdanResults = parse_vdan_output(result)
+            for vdan in vdanResults:
+                
+                if "vdanIndex" in vdan:
+                    uuid = str(vdan["vdanIndex"]) + "_" + hostName                    
+                    vdanObj = vDAN(
+                        name=str(vdan["vdanIndex"]),
                         uuid=uuid,
-                        host=host.get_key().name
+                        host=hostName
                     )
+                    vdanObj.with_property("esxi_host",hostName)
+                    if "vdanIndex" in vdan:
+                        vdanObj.with_property("vdan_id",vdan["vdanIndex"])
+                    if "mac" in vdan:
+                        vdanObj.with_property("mac", vdan["mac"])
+                    if "vlanID" in vdan:
+                        vdanObj.with_property("vlan_id", vdan["vlanID"])
+                    if "fcPortID" in vdan:
+                        vdanObj.with_property("fc_port_id", vdan["fcPortID"])
+                    if "vDANAge" in vdan:
+                        vdanObj.with_metric("vdan_age", vdan["vDANAge"])
 
-                    vdan.with_property("mac", mac)
-                    vdan.with_property("vlan_id", columns[2])
-    
-                    vdan.with_property("fc_port_id", columns[3])
-                    vdan.add_metric(
-                        Metric(key="vdan_age", value=columns[4])
-                    )                    
-                  
-                    vdan.add_parent(host)
-                    vdans.append(vdan)
-                else:
-                        i += 1
+                    if "lanA" in vdan and "prpTxPkts" in vdan["lanA"]:
+                        vdanObj.with_metric("lanA_prpTxPkts", vdan["lanA"]["prpTxPkts"])   
+                    if "lanA" in vdan and "nonPRPPkts" in vdan["lanA"]:
+                        vdanObj.with_metric("lanA_nonPRPPkts", vdan["lanA"]["nonPRPPkts"])
+                    if "lanA" in vdan and "txBytes" in vdan["lanA"]:
+                        vdanObj.with_metric("lanA_txBytes", vdan["lanA"]["txBytes"]) 
+                    if "lanA" in vdan and "txDrops" in vdan["lanA"]:
+                        vdanObj.with_metric("lanA_txDrops", vdan["lanA"]["txDrops"]) 
+                    if "lanA" in vdan and "supTxPkts" in vdan["lanA"]:
+                        vdanObj.with_metric("lanA_supTxPkts", vdan["lanA"]["supTxPkts"])
+
+                    if "lanB" in vdan and "prpTxPkts" in vdan["lanB"]:
+                        vdanObj.with_metric("lanB_prpTxPkts", vdan["lanB"]["prpTxPkts"])   
+                    if "lanB" in vdan and "nonPRPPkts" in vdan["lanB"]:
+                        vdanObj.with_metric("lanB_nonPRPPkts", vdan["lanB"]["nonPRPPkts"])
+                    if "lanB" in vdan and "txBytes" in vdan["lanB"]:
+                        vdanObj.with_metric("lanB_txBytes", vdan["lanB"]["txBytes"]) 
+                    if "lanB" in vdan and "txDrops" in vdan["lanB"]:
+                        vdanObj.with_metric("lanB_txDrops", vdan["lanB"]["txDrops"]) 
+                    if "lanB" in vdan and "supTxPkts" in vdan["lanB"]:
+                        vdanObj.with_metric("lanB_supTxPkts", vdan["lanB"]["supTxPkts"])                     
+                    
+                    vdanObj.add_parent(host)
+                    vdanObjects.append(vdanObj)
+               
         except Exception as e:
             logger.error(
                 f'Error processing ssh command results: {e} - {traceback.format_exc()}'
             )
 
+    return vdanObjects
+
+def parse_vdan_output(text):
+    lines = text.strip().splitlines()
+    vdans = []
+
+    # Regex for vDAN line with lanA
+    main_line_pattern = re.compile(
+        r"^(\d+)\s+([\da-f:]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(lanA)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)"
+    )
+    
+    # Regex for lanB line
+    lanb_line_pattern = re.compile(
+        r"^\s*(lanB)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)"
+    )
+
+    current_common = {}
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('===') or line.startswith('Total PRP'):
+            continue
+
+        match_main = main_line_pattern.match(line)
+        match_lanb = lanb_line_pattern.match(line)
+
+        if match_main:
+            (vdan_index, mac, vlan_id, fcport_id, age, lan, prp_tx, nonprp, txbytes, txdrops, suptx) = match_main.groups()
+            # Save common data
+            current_common = {
+                'vdanIndex': int(vdan_index),
+                'mac': mac,
+                'vlanID': int(vlan_id),
+                'fcPortID': int(fcport_id),
+                'vDANAge': int(age)
+            }
+            vdans.append({
+                **current_common,
+                'lanA':
+                {'prpTxPkts': int(prp_tx),
+                'nonPRPPkts': int(nonprp),
+                'txBytes': int(txbytes),
+                'txDrops': int(txdrops),
+                'supTxPkts': int(suptx)}
+            })
+
+        elif match_lanb:
+            (lan, prp_tx, nonprp, txbytes, txdrops, suptx) = match_lanb.groups()
+            for key in vdans:
+            	if (key["vdanIndex"] == current_common["vdanIndex"]):
+                  key["lanB"] = {
+                    'prpTxPkts': int(prp_tx),
+                    'nonPRPPkts': int(nonprp),
+                    'txBytes': int(txbytes),
+                    'txDrops': int(txdrops),
+                    'supTxPkts': int(suptx)
+                  }
     return vdans
+
+def add_vdan_vm_relationship(vdans: List, vmMacNameDict:dict, vmsByName: dict, suiteAPIClient):
+    RelAddedToVMObjects = []
+    with Timer(logger, f'VDAN to VM relationship creation'):
+        try:
+            for vdanObj in vdans:
+                vmMacAddress = vdanObj.get_property('mac')[0].value
+                if vmMacAddress in vmMacNameDict:
+                    vmName = vmMacNameDict[vmMacAddress]
+                    vms = vmsByName.get(vmName)
+                    if vms is None:
+                        logger.info(f'VM {vmName} does not exist)')
+                    else:                       
+                        if len(vms) == 1:                                        
+                            vdanObj.add_parent(vms[0])
+                            RelAddedToVMObjects.append(vms[0])                                        
+                        elif len(vms) > 1:
+                            vmMOID = getVMMOID(suiteAPIClient,vmName,vmMacAddress)
+                            for vm in vms:                                            
+                                if vm.get_identifier_value("VMEntityObjectID") == vmMOID:                                                
+                                    vdanObj.add_parent(vm)
+                                    RelAddedToVMObjects.append(vm)
+                        else:
+                            logger.info(f'No relation exists between vdan and VM {vmName}')
+        except Exception as e:
+            logger.error(f'An error occurred: {e}') 
+    return RelAddedToVMObjects
+
+
+
+    

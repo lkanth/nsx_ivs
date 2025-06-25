@@ -44,7 +44,7 @@ class Port(Object):
         )
 
 
-def get_ports(ssh: SSHClient, host: Object):
+def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -53,9 +53,9 @@ def get_ports(ssh: SSHClient, host: Object):
     """
     uplinkPorts = []
     ports = []
-    commands = ['nsxdp-cli ens latency system dump -s 0', 'nsxdp-cli ens latency system dump -s 1', 'nsxdp-cli ens latency system clear -s 0', 'nsxdp-cli ens latency system clear -s 1', 'nsxdp-cli vswitch instance list']
+    commands = ['nsxdp-cli ens latency system dump -s 0', 'nsxdp-cli ens latency system dump -s 1', 'nsxdp-cli ens latency system clear -s 0', 'nsxdp-cli ens latency system clear -s 1']
     results = []
-    vSwitchInstanceListCmdOutput = ""
+    hostName = host.get_key().name
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'{host.get_key().name} Port Collection'):
@@ -81,11 +81,10 @@ def get_ports(ssh: SSHClient, host: Object):
             logger.debug(f'Successfully connected and ran command({command})')
         finally:
             logger.debug(f'Results ({results})')
-        if len(results) != 5:            
+        if len(results) != 4:            
             logger.error(f'Error processing ssh command results')
         else:        
             try:
-                vSwitchInstanceListCmdOutput = results[4]
                 if vSwitchInstanceListCmdOutput is not None:
                     UPLINK_NAME = "vmnic128"
                     VDR_PORT = "vdrPort"
@@ -107,15 +106,15 @@ def get_ports(ssh: SSHClient, host: Object):
                     try:
                         lines = re.split("\n", port_result)
                         if len(lines) > 1:
-                            uuid = re.split("\s+", lines[0])[0]
+                            portIDFromCmdOutput = re.split("\s+", lines[0])[0]
                             for uplinkPortID in uplinkPorts:
-                                if uplinkPortID == uuid.strip():
-                                    port = Port(name="PortID: " + uplinkPortID, uuid=uplinkPortID, host=host.get_key().name)                                
+                                if uplinkPortID == portIDFromCmdOutput.strip():
+                                    uuid = uplinkPortID + "_" + hostName
+                                    port = Port(name=uplinkPortID, uuid=uuid, host=hostName)                                
                                     samples_line = re.split("\s+", lines[2])
                                     min_latency = re.split("\s+", lines[3])
                                     max_latency = re.split("\s+", lines[4])
-                                    mean_line = re.split("\s+", lines[5])
-                                                       
+                                    mean_line = re.split("\s+", lines[5])                                                       
 
                                     port.add_metric(
                                         Metric(key="tx_total_samples", value=samples_line[1])
@@ -133,8 +132,6 @@ def get_ports(ssh: SSHClient, host: Object):
                                     port.add_metric(
                                         Metric(key="tx_mean", value=mean_line[1])
                                     )
-                                    
-                                
                                     port.add_metric(
                                         Metric(key="rx_min_latency", value=min_latency[2])
                                     )
@@ -151,11 +148,12 @@ def get_ports(ssh: SSHClient, host: Object):
                     except Exception as e:
                         logger.error(f'Error processing ssh command results: {e}')
     logger.debug(f'Number of ports found: ({len(ports)})')            
-    return ports, vSwitchInstanceListCmdOutput
+    return ports
 
 def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {}, ports: List[Port], vmsByName: {}, suiteAPIClient) -> List:
     RelAddedToVMObjects = []   
-    delimiterChar = "."    
+    delimiterChar = "."
+    vmMacNameDict = {}  
     with Timer(logger, f'Port to vLAN and VM relationship creation'):
         try:
             port_by_name = {}
@@ -169,15 +167,14 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
                     columns = re.split("\s+", rows[rowIndex])                    
                     if len(columns) > 3:
                         #process columns
-                        port = port_by_name.get(f'PortID: {columns[2]}')                        
+                        port = port_by_name.get(f'{columns[2]}')                        
                         vlan = vlans_by_name.get(columns[6])
                         if port is None or vlan is None:
                             logger.info(f'No Connection Port({columns[2]}:{port}) vLAN({columns[6]}:{vlan})')
                         else:
                             logger.info(f'Connection created - Port({port.get_key().name}) vLAN({vlan.get_key().name})')                            
                             port.add_parent(vlan)
-                        
-                        if port is not None:
+                        if port is not None: 
                             vmNICMacaddress = columns[4].strip()
                             clientName = columns[1].strip()
                             subRowIndex = rowIndex
@@ -193,7 +190,8 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
                             vmName = ""
                             lastIndex = clientName.rfind(delimiterChar)
                             if lastIndex != -1:
-                                vmName = clientName[:lastIndex]                                                           
+                                vmName = clientName[:lastIndex]
+                                vmMacNameDict[vmNICMacaddress] = vmName                                                  
                                 vms = vmsByName.get(vmName)
                                 if port is None or vms is None:
                                     logger.info(f'No Connection Port({columns[2]}:{port}) VM({vmName}:{vms})')
@@ -202,7 +200,7 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
                                         port.add_parent(vms[0])
                                         RelAddedToVMObjects.append(vms[0])                                        
                                     elif len(vms) > 1:
-                                        vmMOID = getVMMOID(suiteAPIClient,vms,vmName, vmNICMacaddress)
+                                        vmMOID = getVMMOID(suiteAPIClient,vmName,vmNICMacaddress)
                                         for vm in vms:                                            
                                             if vm.get_identifier_value("VMEntityObjectID") == vmMOID:                                                
                                                 port.add_parent(vm)
@@ -210,11 +208,10 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
                                     else:
                                         logger.info(f'No Connection Port({columns[2]}:{port}) VM({vmName}:{vms})')
         except Exception as e:
-            logger.error(f'An error occurred: {e}'
-            )           
-    return RelAddedToVMObjects
+            logger.error(f'An error occurred: {e}')        
+    return RelAddedToVMObjects, vmMacNameDict
 
-def getVMMOID(suite_api_client: SuiteApiClient, vms: List, vmName: str, vmNICMacaddress: str ) -> str:
+def getVMMOID(suite_api_client: SuiteApiClient, vmName: str, vmNICMacaddress: str ) -> str:
     try:
         vmResourceIDs = []
         MAC_ADDRESS_PROPERTY_NAME = "mac_address"

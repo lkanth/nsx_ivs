@@ -54,6 +54,7 @@ from vdan import get_vdans
 from node import get_nodes
 from lan import get_lans
 from vm import get_vms
+from vdan import add_vdan_vm_relationship
 logger = logging.getLogger(__name__)
 
 
@@ -96,7 +97,19 @@ def get_adapter_definition() -> AdapterDefinition:
         vdan.define_string_property("mac", "MAC Address")
         vdan.define_string_property("vlan_id", "vLAN")
         vdan.define_string_property("fc_port_id", "fc Port ID")
-        vdan.define_metric("vdan_age", "vDAN Age")
+        vdan.define_string_property("esxi_host", "ESXI Hostname or IP")
+        vdan.define_numeric_property("vdan_id", "VDAN Identifier")
+        vdan.define_metric("vdan_age", "VDAN Age")
+        vdan.define_metric("lanA_prpTxPkts", "LAN-A PRP Transmitted Packets")
+        vdan.define_metric("lanA_nonPRPPkts", "LAN-A non PRP Transmitted Packets")
+        vdan.define_metric("lanA_txBytes", "LAN-A Transmitted Bytes")
+        vdan.define_metric("lanA_txDrops", "LAN-A Transmitted Drops")
+        vdan.define_metric("lanA_supTxPkts", "LAN-A Transmitted Packets Suppressed")
+        vdan.define_metric("lanB_prpTxPkts", "LAN-B PRP Transmitted Packets")
+        vdan.define_metric("lanB_nonPRPPkts", "LAN-B non PRP Transmitted Packets")
+        vdan.define_metric("lanB_txBytes", "LAN-B Transmitted Bytes")
+        vdan.define_metric("lanB_txDrops", "LAN-B Transmitted Drops")
+        vdan.define_metric("lanB_supTxPkts", "LAN-B Transmitted Packets Suppressed")
 
         node = definition.define_object_type("node", "Node")
         node.define_string_identifier("uuid", "UUID")
@@ -137,15 +150,15 @@ def get_adapter_definition() -> AdapterDefinition:
         port.define_string_identifier("host", "ESXi Server")
         port.define_string_property("name", "Name")
         port.define_metric("tx_total_samples", "Transmit - Total Samples")
-        port.define_metric("tx_min_latency", "Transmit - Minimum Latency (us)")
-        port.define_metric("tx_max_latency", "Transmit - Maximum Latency (us)")
-        port.define_metric("tx_mean", "Transmit - Mean Latency (us)")
-        port.define_metric("tx_max", "Transmit - Max Latency (us)")       
+        port.define_metric("tx_min_latency", "Transmit - Minimum Latency", Units.TIME.MICROSECONDS)
+        port.define_metric("tx_max_latency", "Transmit - Maximum Latency", Units.TIME.MICROSECONDS)
+        port.define_metric("tx_mean", "Transmit - Mean Latency", Units.TIME.MICROSECONDS)
+        port.define_metric("tx_max", "Transmit - Max Latency", Units.TIME.MICROSECONDS)       
         port.define_metric("rx_total_samples", "Received - Total Samples")
-        port.define_metric("rx_min_latency", "Received - Minimum Latency (us)")
-        port.define_metric("rx_max_latency", "Received - Maximum Latency (us)")
-        port.define_metric("rx_mean", "Received - Mean Latency (us)")
-        port.define_metric("rx_max", "Received - Max Latency (us)")       
+        port.define_metric("rx_min_latency", "Received - Minimum Latency", Units.TIME.MICROSECONDS)
+        port.define_metric("rx_max_latency", "Received - Maximum Latency", Units.TIME.MICROSECONDS)
+        port.define_metric("rx_mean", "Received - Mean Latency", Units.TIME.MICROSECONDS)
+        port.define_metric("rx_max", "Received - Max Latency", Units.TIME.MICROSECONDS)       
 
         return definition
 
@@ -238,26 +251,58 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         if ssh is None:
                             logger.info(f'Unable to collect from {host.get_key().name}')
                         else:
+                            commands = ['nsxdp-cli vswitch instance list']
+                            cmdOutput = []
+                            with Timer(logger, f'{host.get_key().name} vSwitch Instance List'):
+                                try:
+                                    for command in commands:
+                                        stdin, stdout, stderr = ssh.exec_command(command)
+                                        error = stderr.read().decode()
+                                        output = stdout.read().decode()
+                                        cmdOutput.append(output)
+                                except paramiko.AuthenticationException:
+                                    logger.error(
+                                        f'Authentication failed, please verify your credentials'
+                                    )
+                                except paramiko.SSHException as sshException:
+                                    logger.error(
+                                        f'Could not establish SSH connection: {sshException}'
+                                    )
+                                except Exception as e:
+                                    logger.error(
+                                        f'An error occurred: {e}'
+                                    )
+                                else:
+                                    logger.debug(f'Successfully connected and ran command({command})')
+                                finally:
+                                    logger.debug(f'Results ({cmdOutput})')
+                            vSwitchInstanceListCmdOutput = cmdOutput[0]
+                            vmsByName = get_vms(client, adapter_instance_id, content, host.get_key().name)
+                            ports = get_ports(ssh, host, vSwitchInstanceListCmdOutput)                 
+                            vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlans, ports, vmsByName, client)
+
                             vdans = get_vdans(ssh, host)
+                            vDANVMList = add_vdan_vm_relationship(vdans, vmMacNameDict, vmsByName, client)
+                            
                             for vdan in vdans:
                                 #logger.info(f'vdan vlan property({vdan.get_property("vlan_id")[0].value})')
                                 vlan = vlans.get(vdan.get_property('vlan_id')[0].value)
                                 if vlan:
-                                    vdan.add_parent(vlan)
+                                    vdan.add_parent(vlan)                                
+
                             nodes = get_nodes(ssh, host)
                             for node in nodes:
                                 vlan = vlans.get(node.get_property('vlan_id')[0].value)
                                 if vlan:
                                     node.add_parent(vlan)
                             lans = get_lans(ssh, host)
-                            logger.info(f'LM-A LANS: {lans}')
-                            ports, vSwitchInstanceListCmdOutput = get_ports(ssh, host)
-                            vmsByName = get_vms(client, adapter_instance_id, content, host.get_key().name)                                                    
-                            vmObjectList = add_port_relationships(vSwitchInstanceListCmdOutput, vlans, ports, vmsByName, client)
                             if len(vmObjectList) > 0:
                                 for vmObject in vmObjectList:
-                                    RelAddedToVMObjects.append(vmObject)                                            
-                            
+                                    RelAddedToVMObjects.append(vmObject)
+                            if len(vDANVMList) > 0:
+                                for vDANVMObject in vDANVMList:
+                                    if vDANVMObject not in RelAddedToVMObjects:
+                                        RelAddedToVMObjects.append(vmObject)                                         
                             result.add_objects(vdans)
                             result.add_objects(nodes)
                             result.add_objects(lans)
@@ -266,7 +311,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                     except Exception as e:
                         logger.error(f'Unexpected collection error: {e}')
                 try:
-                    result.add_objects(hosts)                    
+                    result.add_objects(hosts)                                  
                     for vm in RelAddedToVMObjects:                                        
                         result.add_object(vm)
                     for vlan in vlans.values():
