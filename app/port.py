@@ -52,13 +52,21 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
     :return: A list of all Switch Objects collected, along with their properties, and metrics
     """
     uplinkPorts = []
+    prpDvsPortsetNumbers = []
     ports = []
-    commands = ['nsxdp-cli ens latency system dump -s 0', 'nsxdp-cli ens latency system dump -s 1', 'nsxdp-cli ens latency system clear -s 0', 'nsxdp-cli ens latency system clear -s 1']
+    commands = []
     results = []
     hostName = host.get_key().name
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'{host.get_key().name} Port Collection'):
+        if vSwitchInstanceListCmdOutput is not None:
+            prpDvsPortsetNumbers = re.findall(r'^DvsPortset-(\d+)\s*\(.*-PRP', vSwitchInstanceListCmdOutput, re.MULTILINE)
+            for prpDvsPortNumber in prpDvsPortsetNumbers:
+                commands.append("nsxdp-cli ens latency system dump -s " + str(prpDvsPortNumber))
+            for prpDvsPortNumber in prpDvsPortsetNumbers:    
+                commands.append("nsxdp-cli ens latency system clear -s " + str(prpDvsPortNumber))
+
         try:
             for command in commands:
                 stdin, stdout, stderr = ssh.exec_command(command)
@@ -78,10 +86,10 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                 f'An error occurred: {e}'
             )
         else:
-            logger.debug(f'Successfully connected and ran command({command})')
+            logger.debug(f'Successfully connected and ran commands({commands})')
         finally:
             logger.debug(f'Results ({results})')
-        if len(results) != 4:            
+        if len(results) != len(commands) :            
             logger.error(f'Error processing ssh command results')
         else:        
             try:
@@ -99,9 +107,9 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                                 uplinkPorts.append(uplinkPortID)
             except Exception as e:
                     logger.error(f'Error processing ssh command results: {e}') 
-
-            for i in range(2):
-                port_results = re.split("PortID:\s+", results[i])[1:]        
+            
+            for i in range(len(prpDvsPortsetNumbers)):
+                port_results = re.split("PortID:\s+", results[i])[1:]      
                 for port_result in port_results:
                     try:
                         lines = re.split("\n", port_result)

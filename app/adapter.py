@@ -281,7 +281,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             ports = get_ports(ssh, host, vSwitchInstanceListCmdOutput)                 
                             vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlans, ports, vmsByName, client)
 
-                            vdans = get_vdans(ssh, host)
+                            vdans = get_vdans(ssh, host, vSwitchInstanceListCmdOutput)
                             vDANVMList = add_vdan_vm_relationship(vdans, vmMacNameDict, vmsByName, client)
                             
                             for vdan in vdans:

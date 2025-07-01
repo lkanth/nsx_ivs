@@ -78,7 +78,7 @@ def get_lans(ssh: SSHClient, host: Object):
                 f'An error occurred: {e}'
             )
         else:
-            logger.debug(f'Successfully connected and ran command({command})')
+            logger.debug(f'Successfully connected and ran commands({commands})')
         finally:
             logger.debug(f'Results ({results})')
         try:

@@ -43,7 +43,7 @@ class vDAN(Object):
             )
         )
 
-def get_vdans(ssh: SSHClient, host: Object):
+def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -51,15 +51,22 @@ def get_vdans(ssh: SSHClient, host: Object):
     :return: A list of all Switch Objects collected, along with their properties, and metrics
     """
     vdanObjects = []
-    command = "nsxdp-cli ens prp stats vdan list"
+    commands = []
+    results = []
     hostName = host.get_key().name
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'{host.get_key().name} vDAN Collection'):
+        if vSwitchInstanceListCmdOutput is not None:
+            prpDvsPortsetNumbers = re.findall(r'^DvsPortset-(\d+)\s*\(.*-PRP', vSwitchInstanceListCmdOutput, re.MULTILINE)
+            for prpDvsPortNumber in prpDvsPortsetNumbers:
+                commands.append("nsxdp-cli ens prp stats vdan list -s " + str(prpDvsPortNumber))
         try:
-            stdin, stdout, stderr = ssh.exec_command(command)
-            error = stderr.read().decode()
-            result = stdout.read().decode()
+            for command in commands:
+                stdin, stdout, stderr = ssh.exec_command(command)
+                error = stderr.read().decode()
+                output = stdout.read().decode()
+                results.append(output)
         except paramiko.AuthenticationException:
             logger.error(
                 f'Authentication failed, please verify your credentials'
@@ -74,56 +81,57 @@ def get_vdans(ssh: SSHClient, host: Object):
             )
         finally:
             logger.debug(
-                f'Successfully connected and ran command({command})'
+                f'Successfully connected and ran commands({commands})'
             )
 
         try:
-            vdanResults = parse_vdan_output(result)
-            for vdan in vdanResults:
-                
-                if "vdanIndex" in vdan:
-                    uuid = str(vdan["vdanIndex"]) + "_" + hostName                    
-                    vdanObj = vDAN(
-                        name=str(vdan["vdanIndex"]),
-                        uuid=uuid,
-                        host=hostName
-                    )
-                    vdanObj.with_property("esxi_host",hostName)
-                    if "vdanIndex" in vdan:
-                        vdanObj.with_property("vdan_id",vdan["vdanIndex"])
-                    if "mac" in vdan:
-                        vdanObj.with_property("mac", vdan["mac"])
-                    if "vlanID" in vdan:
-                        vdanObj.with_property("vlan_id", vdan["vlanID"])
-                    if "fcPortID" in vdan:
-                        vdanObj.with_property("fc_port_id", vdan["fcPortID"])
-                    if "vDANAge" in vdan:
-                        vdanObj.with_metric("vdan_age", vdan["vDANAge"])
-
-                    if "lanA" in vdan and "prpTxPkts" in vdan["lanA"]:
-                        vdanObj.with_metric("lanA_prpTxPkts", vdan["lanA"]["prpTxPkts"])   
-                    if "lanA" in vdan and "nonPRPPkts" in vdan["lanA"]:
-                        vdanObj.with_metric("lanA_nonPRPPkts", vdan["lanA"]["nonPRPPkts"])
-                    if "lanA" in vdan and "txBytes" in vdan["lanA"]:
-                        vdanObj.with_metric("lanA_txBytes", vdan["lanA"]["txBytes"]) 
-                    if "lanA" in vdan and "txDrops" in vdan["lanA"]:
-                        vdanObj.with_metric("lanA_txDrops", vdan["lanA"]["txDrops"]) 
-                    if "lanA" in vdan and "supTxPkts" in vdan["lanA"]:
-                        vdanObj.with_metric("lanA_supTxPkts", vdan["lanA"]["supTxPkts"])
-
-                    if "lanB" in vdan and "prpTxPkts" in vdan["lanB"]:
-                        vdanObj.with_metric("lanB_prpTxPkts", vdan["lanB"]["prpTxPkts"])   
-                    if "lanB" in vdan and "nonPRPPkts" in vdan["lanB"]:
-                        vdanObj.with_metric("lanB_nonPRPPkts", vdan["lanB"]["nonPRPPkts"])
-                    if "lanB" in vdan and "txBytes" in vdan["lanB"]:
-                        vdanObj.with_metric("lanB_txBytes", vdan["lanB"]["txBytes"]) 
-                    if "lanB" in vdan and "txDrops" in vdan["lanB"]:
-                        vdanObj.with_metric("lanB_txDrops", vdan["lanB"]["txDrops"]) 
-                    if "lanB" in vdan and "supTxPkts" in vdan["lanB"]:
-                        vdanObj.with_metric("lanB_supTxPkts", vdan["lanB"]["supTxPkts"])                     
+            for result in results:
+                vdanResults = parse_vdan_output(result)
+                for vdan in vdanResults:
                     
-                    vdanObj.add_parent(host)
-                    vdanObjects.append(vdanObj)
+                    if "vdanIndex" in vdan:
+                        uuid = str(vdan["vdanIndex"]) + "_" + hostName                    
+                        vdanObj = vDAN(
+                            name=str(vdan["vdanIndex"]),
+                            uuid=uuid,
+                            host=hostName
+                        )
+                        vdanObj.with_property("esxi_host",hostName)
+                        if "vdanIndex" in vdan:
+                            vdanObj.with_property("vdan_id",vdan["vdanIndex"])
+                        if "mac" in vdan:
+                            vdanObj.with_property("mac", vdan["mac"])
+                        if "vlanID" in vdan:
+                            vdanObj.with_property("vlan_id", vdan["vlanID"])
+                        if "fcPortID" in vdan:
+                            vdanObj.with_property("fc_port_id", vdan["fcPortID"])
+                        if "vDANAge" in vdan:
+                            vdanObj.with_metric("vdan_age", vdan["vDANAge"])
+
+                        if "lanA" in vdan and "prpTxPkts" in vdan["lanA"]:
+                            vdanObj.with_metric("lanA_prpTxPkts", vdan["lanA"]["prpTxPkts"])   
+                        if "lanA" in vdan and "nonPRPPkts" in vdan["lanA"]:
+                            vdanObj.with_metric("lanA_nonPRPPkts", vdan["lanA"]["nonPRPPkts"])
+                        if "lanA" in vdan and "txBytes" in vdan["lanA"]:
+                            vdanObj.with_metric("lanA_txBytes", vdan["lanA"]["txBytes"]) 
+                        if "lanA" in vdan and "txDrops" in vdan["lanA"]:
+                            vdanObj.with_metric("lanA_txDrops", vdan["lanA"]["txDrops"]) 
+                        if "lanA" in vdan and "supTxPkts" in vdan["lanA"]:
+                            vdanObj.with_metric("lanA_supTxPkts", vdan["lanA"]["supTxPkts"])
+
+                        if "lanB" in vdan and "prpTxPkts" in vdan["lanB"]:
+                            vdanObj.with_metric("lanB_prpTxPkts", vdan["lanB"]["prpTxPkts"])   
+                        if "lanB" in vdan and "nonPRPPkts" in vdan["lanB"]:
+                            vdanObj.with_metric("lanB_nonPRPPkts", vdan["lanB"]["nonPRPPkts"])
+                        if "lanB" in vdan and "txBytes" in vdan["lanB"]:
+                            vdanObj.with_metric("lanB_txBytes", vdan["lanB"]["txBytes"]) 
+                        if "lanB" in vdan and "txDrops" in vdan["lanB"]:
+                            vdanObj.with_metric("lanB_txDrops", vdan["lanB"]["txDrops"]) 
+                        if "lanB" in vdan and "supTxPkts" in vdan["lanB"]:
+                            vdanObj.with_metric("lanB_supTxPkts", vdan["lanB"]["supTxPkts"])                     
+                        
+                        vdanObj.add_parent(host)
+                        vdanObjects.append(vdanObj)
                
         except Exception as e:
             logger.error(
