@@ -91,7 +91,7 @@ def get_adapter_definition() -> AdapterDefinition:
             default=1024,
         )
 
-        vdan = definition.define_object_type("vdan", "vDAN")
+        vdan = definition.define_object_type("vdan", "NSXIvS vDAN")
         vdan.define_string_identifier("uuid", "UUID")
         vdan.define_string_identifier("host", "ESXi Server")
         vdan.define_string_property("mac", "MAC Address")
@@ -111,7 +111,7 @@ def get_adapter_definition() -> AdapterDefinition:
         vdan.define_metric("lanB_txDrops", "LAN-B Transmitted Drops")
         vdan.define_metric("lanB_supTxPkts", "LAN-B Transmitted Packets Suppressed")
 
-        node = definition.define_object_type("node", "Node")
+        node = definition.define_object_type("node", "NSXIvS Node")
         node.define_string_identifier("uuid", "UUID")
         node.define_string_identifier("host", "ESXi Server")
         node.define_string_property("mac", "MAC Address")
@@ -119,7 +119,7 @@ def get_adapter_definition() -> AdapterDefinition:
         node.define_string_property("type", "Node Type")
         node.define_metric("node_age", "Node Age")
 
-        lan = definition.define_object_type("lan", "LAN")
+        lan = definition.define_object_type("lan", "NSXIvS LAN")
         lan.define_string_identifier("lan", "LAN")        
         lan.define_string_identifier("host", "ESXi Server")
         lan.define_string_identifier("switchID", "Switch ID")
@@ -145,7 +145,7 @@ def get_adapter_definition() -> AdapterDefinition:
         lan.define_metric("wrong_lan_drops", "Wrong LAN Drops")
         '''
 
-        port = definition.define_object_type("port", "Port")
+        port = definition.define_object_type("port", "NSXIvS Port")
         port.define_string_identifier("port", "Port")
         port.define_string_identifier("host", "ESXi Server")
         port.define_string_property("name", "Name")
