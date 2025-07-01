@@ -273,7 +273,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                                         f'An error occurred: {e}'
                                     )
                                 else:
-                                    logger.debug(f'Successfully connected and ran command({command})')
+                                    logger.debug(f'Successfully connected and ran commands({commands})')
                                 finally:
                                     logger.debug(f'Results ({cmdOutput})')
                             vSwitchInstanceListCmdOutput = cmdOutput[0]
