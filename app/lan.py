@@ -98,7 +98,7 @@ def get_lans(ssh: SSHClient, host: Object):
                             if "status" in parsed_lan_output[lanItem]:                                
                                 uuid = lanItem + "_" + hostname + "_switch_" + switchIDStr
                                 lan = Lan(name=lanItem, uuid=uuid, host=hostname, switchID=switchIDStr)                               
-                                lan.with_property("esxi", hostname)
+                                lan.with_property("esxi_host", hostname)
                                 lan.with_property("switch", switchID)
                                 lan.with_property("status", parsed_lan_output[lanItem]["status"])
                                 if "uplink1" in parsed_lan_output[lanItem]:

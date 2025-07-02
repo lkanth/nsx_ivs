@@ -122,7 +122,9 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                                     samples_line = re.split("\s+", lines[2])
                                     min_latency = re.split("\s+", lines[3])
                                     max_latency = re.split("\s+", lines[4])
-                                    mean_line = re.split("\s+", lines[5])                                                       
+                                    mean_line = re.split("\s+", lines[5])
+
+                                    port.with_property("esxi_host", hostName)                                                       
 
                                     port.add_metric(
                                         Metric(key="tx_total_samples", value=samples_line[1])

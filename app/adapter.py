@@ -97,7 +97,7 @@ def get_adapter_definition() -> AdapterDefinition:
         vdan.define_string_property("mac", "MAC Address")
         vdan.define_numeric_property("vlan_id", "vLAN")
         vdan.define_numeric_property("fc_port_id", "fc Port ID")
-        vdan.define_string_property("esxi_host", "ESXI Hostname or IP")
+        vdan.define_string_property("esxi_host", "ESXI Host")
         vdan.define_numeric_property("vdan_id", "VDAN Identifier")
         vdan.define_metric("vdan_age", "VDAN Age")
         vdan.define_metric("lanA_prpTxPkts", "LAN-A PRP Transmitted Packets")
@@ -128,7 +128,7 @@ def get_adapter_definition() -> AdapterDefinition:
         lan.define_string_property("uplink2", "Uplink 2")
         lan.define_string_property("policy", "Policy")
         lan.define_string_property("status", "Status")
-        lan.define_string_property("esxi", "ESXi Host")
+        lan.define_string_property("esxi_host", "ESXi Host")
         lan.define_numeric_property("switch", "Switch")
         
         '''
@@ -149,6 +149,7 @@ def get_adapter_definition() -> AdapterDefinition:
         port.define_string_identifier("port", "Port")
         port.define_string_identifier("host", "ESXi Server")
         port.define_string_property("name", "Name")
+        port.define_string_property("esxi_host", "ESXI Host")
         port.define_metric("tx_total_samples", "Transmit - Total Samples")
         port.define_metric("tx_min_latency", "Transmit - Minimum Latency", Units.TIME.MICROSECONDS)
         port.define_metric("tx_max_latency", "Transmit - Maximum Latency", Units.TIME.MICROSECONDS)
