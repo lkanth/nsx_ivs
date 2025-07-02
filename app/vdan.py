@@ -208,7 +208,8 @@ def add_vdan_vm_relationship(vdans: List, vmMacNameDict:dict, vmsByName: dict, s
                     vms = vmsByName.get(vmName)
                     if vms is None:
                         logger.info(f'VM {vmName} does not exist)')
-                    else:                       
+                    else:
+                        vdanObj.with_property("vm", vmName)                       
                         if len(vms) == 1:                                        
                             vdanObj.add_parent(vms[0])
                             RelAddedToVMObjects.append(vms[0])                                        

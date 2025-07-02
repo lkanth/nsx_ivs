@@ -206,6 +206,7 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
                                 if port is None or vms is None:
                                     logger.info(f'No Connection Port({columns[2]}:{port}) VM({vmName}:{vms})')
                                 else:                       
+                                    port.with_property("vm", vmName)
                                     if len(vms) == 1:                                        
                                         port.add_parent(vms[0])
                                         RelAddedToVMObjects.append(vms[0])                                        
