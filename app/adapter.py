@@ -224,103 +224,121 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
     with Timer(logger, "Test connection"):       
         result = TestResult()        
         try:            
-            logger.debug(f"Returning test result: {result.get_json()}")
+            logger.info(f"Returning connection test result: {result.get_json()}")
             service_instance = _get_service_instance(adapter_instance)
             content = service_instance.RetrieveContent()
-            # logger.info(f"content: {content}")
+            #logger.info(f"Service instance content: {content}")
         except Exception as e:
-            logger.error("Unexpected connection test error")
-            logger.exception(e)
+            logger.error(f"Exception occured while testing connection. Exception Type: {type(e).__name__}")
+            logger.exception(f"Exception Message: {e}")            
             result.with_error("Unexpected connection test error: " + repr(e))
         finally:
             return result
 
 
 def collect(adapter_instance: AdapterInstance) -> CollectResult:
-    with Timer(logger, "Collection"):
+    with Timer(logger, "Collect objects, metrics and properties"):
+        logger.info(f'Setup adapter for collecting objects')
         result = CollectResult()
+        logger.info(f'Setup adapter for collecting objects - Successful')
+        
+        
+        if adapter_instance is None:
+            logger.error(f'Adapter Instance is None. Check your VCF Operations Credentials')
         
         with adapter_instance.suite_api_client as client:
+            
+            if client is None:
+                logger.error(f'Suite API Client is None. Check your VCF Operations Credentials')
+            
             service_instance = _get_service_instance(adapter_instance)
+            if service_instance is None:
+                logger.error(f'vim.serviceinstance is None. Cannot connect to vCenter. Check your vCenter credentials.')
             content = service_instance.RetrieveContent()
+            
             adapter_instance_id = _get_vcenter_adapter_instance_id(client, adapter_instance)
-            hosts, ssh_list = connect(adapter_instance, adapter_instance_id, client, content)            
+            if adapter_instance_id is None:
+                logger.error(f'vCenter Adapter instance ID is None. Check if vCenter adapter is configured in VCF Operations')
+            
+            hosts, ssh_list = connect(adapter_instance, adapter_instance_id, client, content)
+            if hosts is None:
+                logger.error(f'Collection cannot proceeed as there are no ESXi hosts')
+            if ssh_list is None:
+                logger.error(f'Collection cannot proceeed as SSH client sessions could not be established with the ESXi hosts. Check your ESX host credentials.')   
+             
             vlans = get_vlans(client)
             RelAddedToVMObjects = []
-            with Timer(logger, "Collect Objects"):
-                for host in hosts:
-                    try:
-                        ssh = ssh_list.get(host.get_key().name)
-                        if ssh is None:
-                            logger.info(f'Unable to collect from {host.get_key().name}')
-                        else:
-                            commands = ['nsxdp-cli vswitch instance list']
-                            cmdOutput = []
-                            with Timer(logger, f'{host.get_key().name} vSwitch Instance List'):
-                                try:
-                                    for command in commands:
-                                        stdin, stdout, stderr = ssh.exec_command(command)
-                                        error = stderr.read().decode()
-                                        output = stdout.read().decode()
-                                        cmdOutput.append(output)
-                                except paramiko.AuthenticationException:
-                                    logger.error(
-                                        f'Authentication failed, please verify your credentials'
-                                    )
-                                except paramiko.SSHException as sshException:
-                                    logger.error(
-                                        f'Could not establish SSH connection: {sshException}'
-                                    )
-                                except Exception as e:
-                                    logger.error(
-                                        f'An error occurred: {e}'
-                                    )
-                                else:
-                                    logger.debug(f'Successfully connected and ran commands({commands})')
-                                finally:
-                                    logger.debug(f'Results ({cmdOutput})')
-                            vSwitchInstanceListCmdOutput = cmdOutput[0]
-                            vmsByName = get_vms(client, adapter_instance_id, content, host.get_key().name)
-                            ports = get_ports(ssh, host, vSwitchInstanceListCmdOutput)                 
-                            vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlans, ports, vmsByName, client)
-
-                            vdans = get_vdans(ssh, host, vSwitchInstanceListCmdOutput)
-                            vDANVMList = add_vdan_vm_relationship(vdans, vmMacNameDict, vmsByName, client)
-                            
-                            for vdan in vdans:
-                                #logger.info(f'vdan vlan property({vdan.get_property("vlan_id")[0].value})')
-                                vlan = vlans.get(vdan.get_property('vlan_id')[0].value)
-                                if vlan:
-                                    vdan.add_parent(vlan)                                
-
-                            nodes = get_nodes(ssh, host)
-                            for node in nodes:
-                                vlan = vlans.get(node.get_property('vlan_id')[0].value)
-                                if vlan:
-                                    node.add_parent(vlan)
-                            lans = get_lans(ssh, host)
-                            if len(vmObjectList) > 0:
-                                for vmObject in vmObjectList:
-                                    RelAddedToVMObjects.append(vmObject)
-                            if len(vDANVMList) > 0:
-                                for vDANVMObject in vDANVMList:
-                                    if vDANVMObject not in RelAddedToVMObjects:
-                                        RelAddedToVMObjects.append(vmObject)                                         
-                            result.add_objects(vdans)
-                            result.add_objects(nodes)
-                            result.add_objects(lans)
-                            result.add_objects(ports)
-                            ssh.close()
-                    except Exception as e:
-                        logger.error(f'Unexpected collection error: {e}')
+            
+            for host in hosts:
                 try:
-                    result.add_objects(hosts)                                  
-                    for vm in RelAddedToVMObjects:                                        
-                        result.add_object(vm)
-                    for vlan in vlans.values():
-                        result.add_object(vlan)
+                    ssh = ssh_list.get(host.get_key().name)
+                    if ssh is None:
+                        logger.info(f'Unable to collect from {host.get_key().name}')
+                    else:
+                        commands = ['nsxdp-cli vswitch instance list']
+                        cmdOutput = []
+                        with Timer(logger, f'{host.get_key().name} vSwitch Instance List'):
+                            for command in commands:
+                                try:
+                                    stdin, stdout, stderr = ssh.exec_command(command)
+                                    error = stderr.read().decode()
+                                    output = stdout.read().decode()
+                                    cmdOutput.append(output)
+                                except paramiko.AuthenticationException:
+                                    logger.error(f'Authentication failed, please verify your credentials')
+                                except paramiko.SSHException as sshException:
+                                    logger.error(f'Could not establish SSH connection: {sshException}')
+                                except Exception as e:
+                                    logger.error(f"Exception occured while executing command {command}. Exception Type: {type(e).__name__}")
+                                    logger.exception(f"Exception Message: {e}")
+                                else:
+                                    logger.info(f'Successfully connected and ran command({command})')
+                                finally:
+                                    logger.info(f'Command output: ({cmdOutput})')
+                        vSwitchInstanceListCmdOutput = cmdOutput[0]
+                        vmsByName = get_vms(client, adapter_instance_id, content, host.get_key().name)
+                        ports = get_ports(ssh, host, vSwitchInstanceListCmdOutput)                 
+                        vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlans, ports, vmsByName, client)
+
+                        vdans = get_vdans(ssh, host, vSwitchInstanceListCmdOutput)
+                        vDANVMList = add_vdan_vm_relationship(vdans, vmMacNameDict, vmsByName, client)
+                        
+                        for vdan in vdans:
+                            #logger.info(f'vdan vlan property({vdan.get_property("vlan_id")[0].value})')
+                            vlan = vlans.get(vdan.get_property('vlan_id')[0].value)
+                            if vlan:
+                                vdan.add_parent(vlan)                                
+
+                        nodes = get_nodes(ssh, host)
+                        for node in nodes:
+                            vlan = vlans.get(node.get_property('vlan_id')[0].value)
+                            if vlan:
+                                node.add_parent(vlan)
+                        lans = get_lans(ssh, host)
+                        if len(vmObjectList) > 0:
+                            for vmObject in vmObjectList:
+                                RelAddedToVMObjects.append(vmObject)
+                        if len(vDANVMList) > 0:
+                            for vDANVMObject in vDANVMList:
+                                if vDANVMObject not in RelAddedToVMObjects:
+                                    RelAddedToVMObjects.append(vmObject)                                         
+                        result.add_objects(vdans)
+                        result.add_objects(nodes)
+                        result.add_objects(lans)
+                        result.add_objects(ports)
+                        ssh.close()
                 except Exception as e:
-                    logger.error(f'Unexpected collection error: {e}')                
+                    logger.error(f"Exception occured while collecting objects and metrics. Exception Type: {type(e).__name__}")
+                    logger.exception(f'Exception Message: {e}')
+            try:
+                result.add_objects(hosts)                                  
+                for vm in RelAddedToVMObjects:                                        
+                    result.add_object(vm)
+                for vlan in vlans.values():
+                    result.add_object(vlan)
+            except Exception as e:
+                logger.error(f"Exception occured while collecting objects and metrics. Exception Type: {type(e).__name__}")
+                logger.error(f'Unexpected collection error: {e}')                
 
     logger.debug(f"Returning collection result {result.get_json()}")
     return result

@@ -26,7 +26,7 @@ def get_hosts(
         container, view_type, recursive
     )
     result = []
-    logger.info(f'Adapter instance: {adapter_instance_id}')
+    logger.info(f'Get Hosts from VCF Ops: vCenter Adapter instance ID: {adapter_instance_id}')
     respone = suite_api_client.get(f'/api/resources/')
     hosts: List[Object] = suite_api_client.query_for_resources(
         {
