@@ -57,7 +57,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
     hostName = host.get_key().name
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
-    with Timer(logger, f'Port collection on host {hostName}'):
+    with Timer(logger, f'Port objects collection on host {hostName}'):
         if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
             prpDvsPortsetNumbers = re.findall(r'^DvsPortset-(\d+)\s*\(.*', vSwitchInstanceListCmdOutput, re.MULTILINE)
             for prpDvsPortNumber in prpDvsPortsetNumbers:
@@ -68,7 +68,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
             if numOfCommands > 0:
                 for command in commands:
                     try:
-                        logger.info(f'Running command {command} on host {hostName}')
+                        logger.info(f'Running command "{command}" on host {hostName}')
                         stdin, stdout, stderr = ssh.exec_command(command, timeout=constants.SSH_COMMAND_TIMEOUT)
                         error = stderr.read().decode().strip()
                         output = stdout.read().decode()
@@ -77,18 +77,18 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                         if exit_status == 0:
                             logger.info(f'Successfully ran the command "{command}" on host {hostName}')
                         else:
-                            logger.error(f"Command failed with exit status {exit_status}. Error: {error}")
+                            logger.error(f'Command failed with exit status {exit_status}. Error: {error}')
                     except paramiko.AuthenticationException as e:
-                        logger.error(f"Authentication failed, please verify your credentials. Exception occured while executing command {command}. Exception Type: {type(e).__name__}")
-                        logger.exception(f"Exception Message: {e}")
+                        logger.error(f'Authentication failed, please verify your credentials. Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
+                        logger.exception(f'Exception Message: {e}')
                     except paramiko.SSHException as e:
-                        logger.error(f"SSH error occurred. Exception Type: {type(e).__name__}")
+                        logger.error(f'SSH error occurred. Exception Type: {type(e).__name__}')
                         logger.exception(f"Exception Message: {e}")
                     except Exception as e:
-                        logger.error(f"Exception occured while executing command {command}. Exception Type: {type(e).__name__}")
-                        logger.exception(f"Exception Message: {e}")
+                        logger.error(f'Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
+                        logger.exception(f'Exception Message: {e}')
                     else:
-                        logger.info(f'Command {command} output is ({output})')
+                        logger.info(f'Command "{command}" output is ({output})')
 
                 if len(results) == len(commands) :                 
                     try:
@@ -153,7 +153,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                                 logger.error(f"Exception occured while parsing command output {port_result}. Exception Type: {type(e).__name__}")
                                 logger.exception(f"Exception Message: {e}")
                 else:
-                    logger.error(f'Number of commands executed does not match with the outputs retrieved')
+                    logger.error(f'Number of commands executed does not match with the number of outputs retrieved')
             else:
                 logger.error(f'Found zero DvSPortSets')
         else:

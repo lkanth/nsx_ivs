@@ -354,7 +354,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             vlan = vlans.get(node.get_property('vlan_id')[0].value)
                             if vlan:
                                 node.add_parent(vlan)
-                        lans = get_lans(ssh, host)
+                        lans = get_lans(ssh, host, vSwitchInstanceListCmdOutput)
                         if len(vmObjectList) > 0:
                             for vmObject in vmObjectList:
                                 RelAddedToVMObjects.append(vmObject)
