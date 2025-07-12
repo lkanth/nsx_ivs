@@ -137,6 +137,7 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
             logger.error(
                 f'Error processing ssh command results: {e} - {traceback.format_exc()}'
             )
+    logger.info(f'Collected {len(vdanObjects)} VDANs from host {hostName}')
 
     return vdanObjects
 
@@ -223,6 +224,7 @@ def add_vdan_vm_relationship(vdans: List, vmMacNameDict:dict, vmsByName: dict, s
                             logger.info(f'No relation exists between vdan and VM {vmName}')
         except Exception as e:
             logger.error(f'An error occurred: {e}') 
+    logger.info(f'Added VM relationships to {len(RelAddedToVMObjects)} Vdans')
     return RelAddedToVMObjects
 
 

@@ -52,7 +52,7 @@ def get_lans(ssh: SSHClient, host: Object):
     :param api: AVISession object
     :return: A list of all Switch Objects collected, along with their properties, and metrics
     """
-    hostname = host.get_key().name
+    hostName = host.get_key().name
     lanObjectList = []
     commands = ['nsxcli -c get ens prp config 0', 'nsxcli -c get ens prp config 1']
     results = []
@@ -96,9 +96,9 @@ def get_lans(ssh: SSHClient, host: Object):
                         switchIDStr = str(switchID)
                         for lanItem in lanList:
                             if "status" in parsed_lan_output[lanItem]:                                
-                                uuid = lanItem + "_" + hostname + "_switch_" + switchIDStr
-                                lan = Lan(name=lanItem, uuid=uuid, host=hostname, switchID=switchIDStr)                               
-                                lan.with_property("esxi_host", hostname)
+                                uuid = lanItem + "_" + hostName + "_switch_" + switchIDStr
+                                lan = Lan(name=lanItem, uuid=uuid, host=hostName, switchID=switchIDStr)                               
+                                lan.with_property("esxi_host", hostName)
                                 lan.with_property("switch", switchID)
                                 lan.with_property("status", parsed_lan_output[lanItem]["status"])
                                 if "uplink1" in parsed_lan_output[lanItem]:
@@ -111,7 +111,7 @@ def get_lans(ssh: SSHClient, host: Object):
                                 lanObjectList.append(lan)
         except Exception as e:
             logger.error(f'Error processing ssh command results: {e}')
-    logger.debug(f'Number of Lans found: ({len(lanObjectList)})') 
+    logger.info(f'Collected {len(lanObjectList)} Lans from host {hostName}') 
     return lanObjectList
 
 

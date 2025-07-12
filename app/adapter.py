@@ -178,32 +178,51 @@ def connect(adapter_instance: AdapterInstance, adapter_instance_id, client: Suit
     #Connect to ssh for each host and create client
     ssh_list = {}
 
-    with Timer(logger, "create ssh sessions"):
+    with Timer(logger, "Create ssh sessions for each host"):
+        logger.info("Retrieve SSH credentials")
         port = int(adapter_instance.get_identifier_value("ssh_port"))
         username = adapter_instance.get_credential_value("ssh_username")
         password = adapter_instance.get_credential_value("ssh_password")
+        
+        if port is not None and port:
+            logger.info(f'Retrieved SSH port for the ESXi hosts')
+        else:
+            logger.error(f'SSH port is NULL or Empty. Supply SSH port number in IvS adapter configuration in VCF Operations')
+        
+        if username is not None and username:
+            logger.info(f'Retrieved SSH username for the ESXi hosts')
+        else:
+            logger.error(f'SSH username is NULL or Empty. Supply SSH username and password for ESXi hosts in IvS adapter configuration in VCF Operations')
+            raise ConnectionError("No SSH username provided")
+        
+        if password is not None and password:
+            logger.info(f'Retrieved SSH user password for the ESXi hosts')
+        else:
+            logger.error(f'SSH password is NULL or Empty. Supply SSH username and password for ESXi hosts in IvS adapter configuration in VCF Operations')
+            raise ConnectionError("No SSH password provided")
+
         for host in hosts:
             try:
-                controller = get_host_property(client, host, "net|mgmt_address")
-                if controller is None:
-                    raise ConnectionError("No host provided")
-                if "ssh_username" not in adapter_instance.credentials:
-                    raise ConnectionError("No username provided")
-                if "ssh_password" not in adapter_instance.credentials:
-                    raise ConnectionError("No password provided")
+                hostAddress = get_host_property(client, host, "net|mgmt_address")
+                if hostAddress is None or not hostAddress:
+                    logger.error(f'Host address not found')
+                    raise ConnectionError("Host address not found")
 
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                ssh.connect(hostname=controller, port=port, username=username, password=password)
+                ssh.connect(hostname=hostAddress, port=port, username=username, password=password)
                 ssh_list.update({host.get_key().name: ssh})
-            except paramiko.AuthenticationException:
-                logger.error("Authentication failed, please verify your credentials")
-            except paramiko.SSHException as sshException:
-                logger.error(f"Could not establish SSH connection: {sshException}")
+            except paramiko.AuthenticationException as e:
+                logger.error(f"Authentication failed, please verify your credentials. Exception Type: {type(e).__name__}")
+                logger.exception(f"Exception Message: {e}")    
+            except paramiko.SSHException as e:
+                logger.error(f"Could not establish SSH connection. Exception Type: {type(e).__name__}")
+                logger.exception(f"Exception Message: {e}")
             except Exception as e:
-                logger.error(f"An error occurred: {e}")
+                logger.error(f"An error occurred, Exception Type: {type(e).__name__}")
+                logger.exception(f"Exception Message: {e}")
             else:
-                logger.info(f'Connected to host({controller})')
+                logger.info(f'Connected to host({hostAddress})')
     
     return hosts, ssh_list
 
@@ -221,49 +240,68 @@ def get_host(adapter_instance: AdapterInstance) -> str:
         return f"https://{host}"
 
 def test(adapter_instance: AdapterInstance) -> TestResult:
-    with Timer(logger, "Test connection"):       
-        result = TestResult()        
+    with Timer(logger, "Test connection"): 
+        logger.info(f'Setup adapter for testing connection')      
+        result = TestResult()
+        logger.info(f'Setup adapter for testing connection - Successful')        
         try:            
-            logger.info(f"Returning connection test result: {result.get_json()}")
             service_instance = _get_service_instance(adapter_instance)
-            content = service_instance.RetrieveContent()
-            #logger.info(f"Service instance content: {content}")
         except Exception as e:
             logger.error(f"Exception occured while testing connection. Exception Type: {type(e).__name__}")
             logger.exception(f"Exception Message: {e}")            
             result.with_error("Unexpected connection test error: " + repr(e))
         finally:
+            logger.info(f"Returning test result: {result.get_json()}")
             return result
 
 
 def collect(adapter_instance: AdapterInstance) -> CollectResult:
-    with Timer(logger, "Collect objects, metrics and properties"):
-        logger.info(f'Setup adapter for collecting objects')
+    with Timer(logger, "Collect data"):
+        
+        logger.info(f'Setup adapter for collecting data')
         result = CollectResult()
-        logger.info(f'Setup adapter for collecting objects - Successful')
+        logger.info(f'Setup adapter for collecting data - Successful')
         
         
-        if adapter_instance is None:
-            logger.error(f'Adapter Instance is None. Check your VCF Operations Credentials')
+        if adapter_instance is not None and adapter_instance:
+            logger.info(f'Got valid adapter instance')
+        else:
+            logger.error(f'Adapter instance is NULL or Empty. Check your VCF Operations Credentials')
         
         with adapter_instance.suite_api_client as client:
             
-            if client is None:
-                logger.error(f'Suite API Client is None. Check your VCF Operations Credentials')
+            if client is not None and client:
+                logger.info(f'Got valid VCF Operations Suite API Client')
+            else:
+                logger.error(f'VCF Operations Suite API Client is NULL or empty. Check your VCF Operations Credentials')
             
             service_instance = _get_service_instance(adapter_instance)
-            if service_instance is None:
-                logger.error(f'vim.serviceinstance is None. Cannot connect to vCenter. Check your vCenter credentials.')
+            if service_instance is not None and service_instance:
+                logger.info(f'Successfully connected to vCenter and retrieved vim.serviceinstance.')
+            else:
+                logger.error(f'vim.serviceinstance is NULL or empty. Cannot connect to vCenter. Check your vCenter credentials.')
+
             content = service_instance.RetrieveContent()
             
             adapter_instance_id = _get_vcenter_adapter_instance_id(client, adapter_instance)
-            if adapter_instance_id is None:
+            if adapter_instance_id is not None and adapter_instance_id:
+                logger.info(f'Successfully retrieved vCenter adapter instance ID {adapter_instance_id} from VCF Operations.')
+            else:
                 logger.error(f'vCenter Adapter instance ID is None. Check if vCenter adapter is configured in VCF Operations')
             
+            logger.info(f'Get a list of ESXi hosts from VCF Ops and establish SSH Sessions to those ESXi hosts')
             hosts, ssh_list = connect(adapter_instance, adapter_instance_id, client, content)
-            if hosts is None:
+            noOfHosts = len(hosts)
+            noOfSSHConnections = len(ssh_list)
+
+            if hosts is not None and hosts and noOfHosts > 0:
+                logger.info(f'Retrieved {noOfHosts} hosts from VCF Operations')
+            else:
                 logger.error(f'Collection cannot proceeed as there are no ESXi hosts')
-            if ssh_list is None:
+
+            if ssh_list is not None and ssh_list and noOfSSHConnections > 0:
+                logger.info(f'Established SSH connection with {noOfSSHConnections} hosts')
+            else:
                 logger.error(f'Collection cannot proceeed as SSH client sessions could not be established with the ESXi hosts. Check your ESX host credentials.')   
              
             vlans = get_vlans(client)
@@ -271,13 +309,15 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
             
             for host in hosts:
                 try:
-                    ssh = ssh_list.get(host.get_key().name)
+                    hostName = host.get_key().name
+                    ssh = ssh_list.get(hostName)
                     if ssh is None:
-                        logger.info(f'Unable to collect from {host.get_key().name}')
+                        logger.error(f'SSH connection to {hostName} has failed. Unable to collect data from host {hostName}')
                     else:
+                        logger.info(f'*********** Starting data collection from host {hostName} ***********')
                         commands = ['nsxdp-cli vswitch instance list']
                         cmdOutput = []
-                        with Timer(logger, f'{host.get_key().name} vSwitch Instance List'):
+                        with Timer(logger, f'{hostName} vSwitch Instance List'):
                             for command in commands:
                                 try:
                                     stdin, stdout, stderr = ssh.exec_command(command)
@@ -327,6 +367,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         result.add_objects(lans)
                         result.add_objects(ports)
                         ssh.close()
+                        logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
                 except Exception as e:
                     logger.error(f"Exception occured while collecting objects and metrics. Exception Type: {type(e).__name__}")
                     logger.exception(f'Exception Message: {e}')
