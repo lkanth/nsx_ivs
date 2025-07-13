@@ -83,14 +83,14 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                         logger.exception(f'Exception Message: {e}')
                     except paramiko.SSHException as e:
                         logger.error(f'SSH error occurred. Exception Type: {type(e).__name__}')
-                        logger.exception(f"Exception Message: {e}")
+                        logger.exception(f'Exception Message: {e}')
                     except Exception as e:
                         logger.error(f'Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
                         logger.exception(f'Exception Message: {e}')
                     else:
                         logger.info(f'Command "{command}" output is ({output})')
 
-                if len(results) == len(commands) :                 
+                if len(results) == len(commands):                 
                     try:
                         portset_results = re.split("DvsPortset", vSwitchInstanceListCmdOutput)
                         for port_result in portset_results:
@@ -102,7 +102,8 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                                     portWithUUID = columns[2].strip()
                                     uuidPorts.append(portWithUUID)
                     except Exception as e:
-                        logger.error(f'Error processing ssh command results: {e}') 
+                        logger.error(f'Exception occured while parsing command output {portset_results}. Exception Type: {type(e).__name__}')
+                        logger.exception(f'Exception Message: {e}')
                     
                     for i in range(len(prpDvsPortsetNumbers)):
                         port_results = re.split("PortID:\s+", results[i])[1:]      
@@ -150,8 +151,8 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                                             port.add_parent(host)
                                             ports.append(port) 
                             except Exception as e:
-                                logger.error(f"Exception occured while parsing command output {port_result}. Exception Type: {type(e).__name__}")
-                                logger.exception(f"Exception Message: {e}")
+                                logger.error(f'Exception occured while parsing command output {port_result}. Exception Type: {type(e).__name__}')
+                                logger.exception(f'Exception Message: {e}')
                 else:
                     logger.error(f'Number of commands executed does not match with the number of outputs retrieved')
             else:
@@ -166,9 +167,9 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
     delimiterChar = "."
     vmMacNameDict = {}
     portToVLANRelationsAdded = 0
-    with Timer(logger, f'Port to vLAN and VM relationship creation'):
-        try:
-            if ports is not None and ports:
+    with Timer(logger, f'Port to vLAN and Port to VM relationship creation'):
+        if ports is not None and ports:
+            try:
                 port_by_name = {}
                 for port in ports:
                     port_by_name.update({port.get_key().name: port})
@@ -209,7 +210,7 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
                                         vmName = clientName[:lastIndex]
                                         vmMacNameDict[vmNICMacaddress] = vmName                                                  
                                         vms = vmsByName.get(vmName)
-                                        if port is None or vms is None:
+                                        if port is None or vms is None or not vms or not port:
                                             logger.info(f'Port ({columns[2]}:{port}) to VM({vmName}:{vms}) relationship was not created.')
                                         else:                       
                                             port.with_property("vm", vmName)
@@ -228,11 +229,13 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
                                                 logger.info(f'Port ({columns[2]}:{port}) to VM({vmName}:{vms}) relationship was not created.')
                 else:
                     logger.error(f'"nsxdp-cli vswitch instance list command output is empty: "{vSwitchInstanceListCmdOutput}')
-            else:
-                logger.info(f'No relations to ports can be added. Port list is empty - ({ports})')
-        except Exception as e:
-            logger.error(f"Exception occured while creating VM relationship to ports. Exception Type: {type(e).__name__}")
-            logger.exception(f"Exception Message: {e}")
+                    
+            except Exception as e:
+                logger.error(f'Exception occured while creating VM and VLAN relationship to ports. Exception Type: {type(e).__name__}')
+                logger.exception(f'Exception Message: {e}')
+        else:
+            logger.info(f'No relations to ports can be added. Port list is empty - ({ports})')
+        
     logger.info(f'Added VM relationships to {len(RelAddedToVMObjects)} Ports')
     logger.info(f'Added VLAN relationships to {portToVLANRelationsAdded} Ports')        
     return RelAddedToVMObjects, vmMacNameDict
@@ -244,14 +247,19 @@ def getVMMOID(suite_api_client: SuiteApiClient, vmName: str, vmNICMacaddress: st
         VM_MOID_PROPERTY_NAME = "summary|MOID"
         vmMOID = ""
         vmResourceIDsStr=""
-        vmsResponse = suite_api_client.get(f'/api/resources?name={vmName}&adapterKind=VMWARE&resourceKind=VirtualMachine&_no_links=true')  
+        logger.info(f'Making VCF Operations REST API call to retrieve VM resource identifier')
+        vmsResponse = suite_api_client.get(f'/api/resources?name={vmName}&adapterKind=VMWARE&resourceKind=VirtualMachine&_no_links=true')
+        
         vmResourceList = json.loads(vmsResponse.content)["resourceList"]
         for vmResource in vmResourceList:
             vmResourceIDs.append(vmResource["identifier"]) 
         for vmResourceID in vmResourceIDs:
             vmResourceIDsStr = vmResourceIDsStr + "resourceId=" + vmResourceID + "&"
-        
+
+        logger.info(f'Response from VCF Operations REST API call - VM Resource ID: {vmResourceIDsStr}')
+        logger.info(f'Making VCF Operations REST API call to retrieve VM properties')
         propResponse = suite_api_client.get(f'/api/resources/properties?{vmResourceIDsStr}_no_links=true')
+        logger.info(f'Retrieved VM properties from VCF Operations')
         resourcePropertiesList = json.loads(propResponse.content)["resourcePropertiesList"]
         for resourceProperty in resourcePropertiesList:            
             propList = resourceProperty["property"]
@@ -263,10 +271,8 @@ def getVMMOID(suite_api_client: SuiteApiClient, vmName: str, vmNICMacaddress: st
                                 vmMOID = propID["value"]
                                 return vmMOID                  
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
-        return None
-    
-    logger.info(f'Response: {vmsResponse.content}')
+        logger.error(f'Exception occured while getting VM MOID from VCF Operations. Exception Type: {type(e).__name__}')
+        logger.exception(f'Exception Message: {e}')
     return None
 
 

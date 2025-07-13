@@ -91,8 +91,8 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
 
             
             if len(results) == len(commands):
-                try:
-                    for i in range(len(results)):                   
+                for i in range(len(results)):
+                    try:                   
                         parsed_lan_output = parse_lan_output(results[i])
                         lanList = []
                         for key in parsed_lan_output:
@@ -116,9 +116,9 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                                         lan.with_property("policy", value=parsed_lan_output[lanItem]["policy"])
                                     lan.add_parent(host)
                                     lanObjectList.append(lan)
-                except Exception as e:
-                    logger.error(f"Exception occured while parsing command output {results[i]}. Exception Type: {type(e).__name__}")
-                    logger.exception(f"Exception Message: {e}")
+                    except Exception as e:
+                        logger.error(f'Exception occured while parsing command output {results[i]}. Exception Type: {type(e).__name__}')
+                        logger.exception(f'Exception Message: {e}')
             else:
                 logger.error(f'Number of commands executed does not match with the number of outputs retrieved')
         else:

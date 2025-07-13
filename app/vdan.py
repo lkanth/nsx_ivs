@@ -15,10 +15,7 @@ from paramiko import SSHClient
 import port
 from port import getVMMOID
 
-
-
 logger = logging.getLogger(__name__)
-
 
 class vDAN(Object):
 
@@ -56,89 +53,93 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
     hostName = host.get_key().name
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
-    with Timer(logger, f'{host.get_key().name} vDAN Collection'):
-        if vSwitchInstanceListCmdOutput is not None:
-            prpDvsPortsetNumbers = re.findall(r'^DvsPortset-(\d+)\s*\(.*-PRP', vSwitchInstanceListCmdOutput, re.MULTILINE)
+    with Timer(logger, f'vDAN objects collection on {host.get_key().name} '):
+        if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
+            prpDvsPortsetNumbers = re.findall(r'^DvsPortset-(\d+)\s*\(.*', vSwitchInstanceListCmdOutput, re.MULTILINE)
             for prpDvsPortNumber in prpDvsPortsetNumbers:
                 commands.append("nsxdp-cli ens prp stats vdan list -s " + str(prpDvsPortNumber))
-        try:
+        numOfCommands = len(commands)
+        if numOfCommands > 0:
             for command in commands:
-                stdin, stdout, stderr = ssh.exec_command(command)
-                error = stderr.read().decode()
-                output = stdout.read().decode()
-                results.append(output)
-        except paramiko.AuthenticationException:
-            logger.error(
-                f'Authentication failed, please verify your credentials'
-            )
-        except paramiko.SSHException as sshException:
-            logger.error(
-                f'Could not establish SSH connection: {sshException}'
-            )
-        except Exception as e:
-            logger.error(
-                f'An error occurred: {e}'
-            )
-        finally:
-            logger.debug(
-                f'Successfully connected and ran commands({commands})'
-            )
+                try:
+                    logger.info(f'Running command "{command}" on host {hostName}')
+                    stdin, stdout, stderr = ssh.exec_command(command, timeout=constants.SSH_COMMAND_TIMEOUT)
+                    error = stderr.read().decode().strip()
+                    output = stdout.read().decode()
+                    results.append(output)
+                    exit_status = stdout.channel.recv_exit_status()
+                    if exit_status == 0:
+                        logger.info(f'Successfully ran the command "{command}" on host {hostName}')
+                    else:
+                        logger.error(f'Command failed with exit status {exit_status}. Error: {error}')
+                except paramiko.AuthenticationException as e:
+                    logger.error(f'Authentication failed, please verify your credentials. Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
+                    logger.exception(f'Exception Message: {e}')
+                except paramiko.SSHException as e:
+                    logger.error(f'SSH error occurred. Exception Type: {type(e).__name__}')
+                    logger.exception(f'Exception Message: {e}')
+                except Exception as e:
+                    logger.error(f'Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
+                    logger.exception(f'Exception Message: {e}')
+                else:
+                    logger.info(f'Command "{command}" output is ({output})')
 
-        try:
-            for result in results:
-                vdanResults = parse_vdan_output(result)
-                for vdan in vdanResults:
-                    
-                    if "vdanIndex" in vdan:
-                        uuid = str(vdan["vdanIndex"]) + "_" + hostName                    
-                        vdanObj = vDAN(
-                            name=str(vdan["vdanIndex"]),
-                            uuid=uuid,
-                            host=hostName
-                        )
-                        vdanObj.with_property("esxi_host",hostName)
-                        if "vdanIndex" in vdan:
-                            vdanObj.with_property("vdan_id",vdan["vdanIndex"])
-                        if "mac" in vdan:
-                            vdanObj.with_property("mac", vdan["mac"])
-                        if "vlanID" in vdan:
-                            vdanObj.with_property("vlan_id", vdan["vlanID"])
-                        if "fcPortID" in vdan:
-                            vdanObj.with_property("fc_port_id", vdan["fcPortID"])
-                        if "vDANAge" in vdan:
-                            vdanObj.with_metric("vdan_age", vdan["vDANAge"])
+            if len(results) == len(commands):
+                for result in results:
+                    try:
+                        vdanResults = parse_vdan_output(result)
+                        for vdan in vdanResults:
+                            if "vdanIndex" in vdan:
+                                uuid = str(vdan["vdanIndex"]) + "_" + hostName                    
+                                vdanObj = vDAN(
+                                    name=str(vdan["vdanIndex"]),
+                                    uuid=uuid,
+                                    host=hostName
+                                )
+                                vdanObj.with_property("esxi_host",hostName)
+                                if "vdanIndex" in vdan:
+                                    vdanObj.with_property("vdan_id",vdan["vdanIndex"])
+                                if "mac" in vdan:
+                                    vdanObj.with_property("mac", vdan["mac"])
+                                if "vlanID" in vdan:
+                                    vdanObj.with_property("vlan_id", vdan["vlanID"])
+                                if "fcPortID" in vdan:
+                                    vdanObj.with_property("fc_port_id", vdan["fcPortID"])
+                                if "vDANAge" in vdan:
+                                    vdanObj.with_metric("vdan_age", vdan["vDANAge"])
 
-                        if "lanA" in vdan and "prpTxPkts" in vdan["lanA"]:
-                            vdanObj.with_metric("lanA_prpTxPkts", vdan["lanA"]["prpTxPkts"])   
-                        if "lanA" in vdan and "nonPRPPkts" in vdan["lanA"]:
-                            vdanObj.with_metric("lanA_nonPRPPkts", vdan["lanA"]["nonPRPPkts"])
-                        if "lanA" in vdan and "txBytes" in vdan["lanA"]:
-                            vdanObj.with_metric("lanA_txBytes", vdan["lanA"]["txBytes"]) 
-                        if "lanA" in vdan and "txDrops" in vdan["lanA"]:
-                            vdanObj.with_metric("lanA_txDrops", vdan["lanA"]["txDrops"]) 
-                        if "lanA" in vdan and "supTxPkts" in vdan["lanA"]:
-                            vdanObj.with_metric("lanA_supTxPkts", vdan["lanA"]["supTxPkts"])
+                                if "lanA" in vdan and "prpTxPkts" in vdan["lanA"]:
+                                    vdanObj.with_metric("lanA_prpTxPkts", vdan["lanA"]["prpTxPkts"])   
+                                if "lanA" in vdan and "nonPRPPkts" in vdan["lanA"]:
+                                    vdanObj.with_metric("lanA_nonPRPPkts", vdan["lanA"]["nonPRPPkts"])
+                                if "lanA" in vdan and "txBytes" in vdan["lanA"]:
+                                    vdanObj.with_metric("lanA_txBytes", vdan["lanA"]["txBytes"]) 
+                                if "lanA" in vdan and "txDrops" in vdan["lanA"]:
+                                    vdanObj.with_metric("lanA_txDrops", vdan["lanA"]["txDrops"]) 
+                                if "lanA" in vdan and "supTxPkts" in vdan["lanA"]:
+                                    vdanObj.with_metric("lanA_supTxPkts", vdan["lanA"]["supTxPkts"])
 
-                        if "lanB" in vdan and "prpTxPkts" in vdan["lanB"]:
-                            vdanObj.with_metric("lanB_prpTxPkts", vdan["lanB"]["prpTxPkts"])   
-                        if "lanB" in vdan and "nonPRPPkts" in vdan["lanB"]:
-                            vdanObj.with_metric("lanB_nonPRPPkts", vdan["lanB"]["nonPRPPkts"])
-                        if "lanB" in vdan and "txBytes" in vdan["lanB"]:
-                            vdanObj.with_metric("lanB_txBytes", vdan["lanB"]["txBytes"]) 
-                        if "lanB" in vdan and "txDrops" in vdan["lanB"]:
-                            vdanObj.with_metric("lanB_txDrops", vdan["lanB"]["txDrops"]) 
-                        if "lanB" in vdan and "supTxPkts" in vdan["lanB"]:
-                            vdanObj.with_metric("lanB_supTxPkts", vdan["lanB"]["supTxPkts"])                     
-                        
-                        vdanObj.add_parent(host)
-                        vdanObjects.append(vdanObj)
-               
-        except Exception as e:
-            logger.error(
-                f'Error processing ssh command results: {e} - {traceback.format_exc()}'
-            )
-    logger.info(f'Collected {len(vdanObjects)} VDANs from host {hostName}')
-
+                                if "lanB" in vdan and "prpTxPkts" in vdan["lanB"]:
+                                    vdanObj.with_metric("lanB_prpTxPkts", vdan["lanB"]["prpTxPkts"])   
+                                if "lanB" in vdan and "nonPRPPkts" in vdan["lanB"]:
+                                    vdanObj.with_metric("lanB_nonPRPPkts", vdan["lanB"]["nonPRPPkts"])
+                                if "lanB" in vdan and "txBytes" in vdan["lanB"]:
+                                    vdanObj.with_metric("lanB_txBytes", vdan["lanB"]["txBytes"]) 
+                                if "lanB" in vdan and "txDrops" in vdan["lanB"]:
+                                    vdanObj.with_metric("lanB_txDrops", vdan["lanB"]["txDrops"]) 
+                                if "lanB" in vdan and "supTxPkts" in vdan["lanB"]:
+                                    vdanObj.with_metric("lanB_supTxPkts", vdan["lanB"]["supTxPkts"])                     
+                                
+                                vdanObj.add_parent(host)
+                                vdanObjects.append(vdanObj)
+                    except:
+                        logger.error(f"Exception occured while parsing command output {result}. Exception Type: {type(e).__name__}")
+                        logger.exception(f"Exception Message: {e}")
+            else:
+                logger.error(f'Number of commands executed does not match with the number of outputs retrieved')               
+        else:
+            logger.error(f'Found zero DvSPortSets')
+    logger.info(f'Collected {len(vdanObjects)} VDAN objects from host {hostName}')
     return vdanObjects
 
 def parse_vdan_output(text):
@@ -201,29 +202,32 @@ def parse_vdan_output(text):
 def add_vdan_vm_relationship(vdans: List, vmMacNameDict:dict, vmsByName: dict, suiteAPIClient):
     RelAddedToVMObjects = []
     with Timer(logger, f'VDAN to VM relationship creation'):
-        try:
-            for vdanObj in vdans:
+        for vdanObj in vdans:
+            try:
                 vmMacAddress = vdanObj.get_property('mac')[0].value
                 if vmMacAddress in vmMacNameDict:
                     vmName = vmMacNameDict[vmMacAddress]
                     vms = vmsByName.get(vmName)
-                    if vms is None:
-                        logger.info(f'VM {vmName} does not exist)')
+                    if vms is None or not vms:
+                        logger.info(f'VM {vmName} does not exist for relationship creation)')
                     else:
                         vdanObj.with_property("vm", vmName)                       
                         if len(vms) == 1:                                        
                             vdanObj.add_parent(vms[0])
+                            logger.info(f'VDAN ({vdanObj.get_key().name}) to VM ({vms[0].get_key().name}) relationship was created')
                             RelAddedToVMObjects.append(vms[0])                                        
                         elif len(vms) > 1:
                             vmMOID = getVMMOID(suiteAPIClient,vmName,vmMacAddress)
                             for vm in vms:                                            
                                 if vm.get_identifier_value("VMEntityObjectID") == vmMOID:                                                
                                     vdanObj.add_parent(vm)
+                                    logger.info(f'VDAN ({vdanObj.get_key().name}) to VM ({vm.get_key().name}) relationship was created')
                                     RelAddedToVMObjects.append(vm)
                         else:
                             logger.info(f'No relation exists between vdan and VM {vmName}')
-        except Exception as e:
-            logger.error(f'An error occurred: {e}') 
+            except Exception as e:
+                logger.error(f'Exception occured while creating VM "{vmName}" relationship to VDAN "{vdanObj.get_key().name}". Exception Type: {type(e).__name__}')
+                logger.exception(f"Exception Message: {e}")
     logger.info(f'Added VM relationships to {len(RelAddedToVMObjects)} Vdans')
     return RelAddedToVMObjects
 

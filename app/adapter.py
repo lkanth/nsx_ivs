@@ -171,13 +171,13 @@ def connect(adapter_instance: AdapterInstance, adapter_instance_id, client: Suit
     :return: ssh client an AVI session object
     :except: KeyError environment variable is not found
     """
+    hosts = []
+    ssh_list = {}
 
     # Get all hosts
     with Timer(logger, "Retrieve hosts from vCenter"):       
-        hosts = get_hosts(client, adapter_instance_id, content)        
-    #Connect to ssh for each host and create client
-    ssh_list = {}
-
+        hosts = get_hosts(client, adapter_instance_id, content)  
+    
     with Timer(logger, "Create ssh sessions for each host"):
         logger.info("Retrieve SSH credentials")
         port = int(adapter_instance.get_identifier_value("ssh_port"))
@@ -187,42 +187,41 @@ def connect(adapter_instance: AdapterInstance, adapter_instance_id, client: Suit
         if port is not None and port:
             logger.info(f'Retrieved SSH port for the ESXi hosts')
         else:
-            logger.error(f'SSH port is NULL or Empty. Supply SSH port number in IvS adapter configuration in VCF Operations')
+            logger.error(f'SSH port is NULL or Empty. Supply SSH port number in IvS adapter configuration in VCF Operations')        
         
         if username is not None and username:
             logger.info(f'Retrieved SSH username for the ESXi hosts')
         else:
             logger.error(f'SSH username is NULL or Empty. Supply SSH username and password for ESXi hosts in IvS adapter configuration in VCF Operations')
-            raise ConnectionError("No SSH username provided")
-        
+            
         if password is not None and password:
             logger.info(f'Retrieved SSH user password for the ESXi hosts')
         else:
             logger.error(f'SSH password is NULL or Empty. Supply SSH username and password for ESXi hosts in IvS adapter configuration in VCF Operations')
-            raise ConnectionError("No SSH password provided")
-
-        for host in hosts:
-            try:
-                hostAddress = get_host_property(client, host, "net|mgmt_address")
-                if hostAddress is None or not hostAddress:
-                    logger.error(f'Host address not found')
-                    raise ConnectionError("Host address not found")
-
-                ssh = paramiko.SSHClient()
-                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                ssh.connect(hostname=hostAddress, port=port, username=username, password=password)
-                ssh_list.update({host.get_key().name: ssh})
-            except paramiko.AuthenticationException as e:
-                logger.error(f"Authentication failed, please verify your credentials. Exception Type: {type(e).__name__}")
-                logger.exception(f"Exception Message: {e}")    
-            except paramiko.SSHException as e:
-                logger.error(f"Could not establish SSH connection. Exception Type: {type(e).__name__}")
-                logger.exception(f"Exception Message: {e}")
-            except Exception as e:
-                logger.error(f"An error occurred, Exception Type: {type(e).__name__}")
-                logger.exception(f"Exception Message: {e}")
-            else:
-                logger.info(f'Connected to host({hostAddress})')
+            
+        if port is not None and port and username is not None and username and password is not None and password:
+            for host in hosts:
+                try:
+                    hostName = host.get_key().name
+                    hostAddress = get_host_property(client, host, "net|mgmt_address")
+                    if hostAddress is not None and hostAddress:
+                        ssh = paramiko.SSHClient()
+                        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                        ssh.connect(hostname=hostAddress, port=port, username=username, password=password, timeout=constants.SSH_CONNECT_TIMEOUT)
+                        ssh_list.update({host.get_key().name: ssh})
+                    else:
+                        logger.error(f'Host management address property value not found for host object: {hostName}')
+                except paramiko.AuthenticationException as e:
+                    logger.error(f'Authentication failed, please verify your credentials. Exception Type: {type(e).__name__}')
+                    logger.exception(f'Exception Message: {e}')    
+                except paramiko.SSHException as e:
+                    logger.error(f'Could not establish SSH connection. Exception Type: {type(e).__name__}')
+                    logger.exception(f'Exception Message: {e}')
+                except Exception as e:
+                    logger.error(f'An error occurred, Exception Type: {type(e).__name__}')
+                    logger.exception(f'Exception Message: {e}')
+                else:
+                    logger.info(f'Connected to host({hostAddress})')
     
     return hosts, ssh_list
 
@@ -267,6 +266,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
             logger.info(f'Got valid adapter instance')
         else:
             logger.error(f'Adapter instance is NULL or Empty. Check your VCF Operations Credentials')
+            return result
         
         with adapter_instance.suite_api_client as client:
             
@@ -274,12 +274,14 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                 logger.info(f'Got valid VCF Operations Suite API Client')
             else:
                 logger.error(f'VCF Operations Suite API Client is NULL or empty. Check your VCF Operations Credentials')
+                return result
             
             service_instance = _get_service_instance(adapter_instance)
             if service_instance is not None and service_instance:
                 logger.info(f'Successfully connected to vCenter and retrieved vim.serviceinstance.')
             else:
                 logger.error(f'vim.serviceinstance is NULL or empty. Cannot connect to vCenter. Check your vCenter credentials.')
+                return result
 
             content = service_instance.RetrieveContent()
             
@@ -288,6 +290,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                 logger.info(f'Successfully retrieved vCenter adapter instance ID {adapter_instance_id} from VCF Operations.')
             else:
                 logger.error(f'vCenter Adapter instance ID is None. Check if vCenter adapter is configured in VCF Operations')
+                return result
             
             logger.info(f'Get a list of ESXi hosts from VCF Ops and establish SSH Sessions to those ESXi hosts')
             hosts, ssh_list = connect(adapter_instance, adapter_instance_id, client, content)
@@ -298,11 +301,13 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                 logger.info(f'Retrieved {noOfHosts} hosts from VCF Operations')
             else:
                 logger.error(f'Collection cannot proceeed as there are no ESXi hosts')
+                return result
 
             if ssh_list is not None and ssh_list and noOfSSHConnections > 0:
                 logger.info(f'Established SSH connection with {noOfSSHConnections} hosts')
             else:
-                logger.error(f'Collection cannot proceeed as SSH client sessions could not be established with the ESXi hosts. Check your ESX host credentials.')   
+                logger.error(f'Collection cannot proceeed as SSH client sessions could not be established with the ESXi hosts. Check your ESX host credentials.')
+                return result   
              
             vlans = get_vlans(client)
             RelAddedToVMObjects = []
@@ -311,30 +316,35 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                 try:
                     hostName = host.get_key().name
                     ssh = ssh_list.get(hostName)
-                    if ssh is None:
+                    if ssh is None or not ssh:
                         logger.error(f'SSH connection to {hostName} has failed. Unable to collect data from host {hostName}')
                     else:
                         logger.info(f'*********** Starting data collection from host {hostName} ***********')
                         commands = ['nsxdp-cli vswitch instance list']
-                        cmdOutput = []
-                        with Timer(logger, f'{hostName} vSwitch Instance List'):
-                            for command in commands:
-                                try:
-                                    stdin, stdout, stderr = ssh.exec_command(command)
-                                    error = stderr.read().decode()
-                                    output = stdout.read().decode()
-                                    cmdOutput.append(output)
-                                except paramiko.AuthenticationException:
-                                    logger.error(f'Authentication failed, please verify your credentials')
-                                except paramiko.SSHException as sshException:
-                                    logger.error(f'Could not establish SSH connection: {sshException}')
-                                except Exception as e:
-                                    logger.error(f"Exception occured while executing command {command}. Exception Type: {type(e).__name__}")
-                                    logger.exception(f"Exception Message: {e}")
+                        cmdOutput = []                        
+                        for command in commands:
+                            try:
+                                logger.info(f'Running command "{command}" on host {hostName}')
+                                stdin, stdout, stderr = ssh.exec_command(command, timeout=constants.SSH_COMMAND_TIMEOUT)
+                                error = stderr.read().decode().strip()
+                                output = stdout.read().decode()
+                                cmdOutput.append(output)
+                                exit_status = stdout.channel.recv_exit_status()
+                                if exit_status == 0:
+                                    logger.info(f'Successfully ran the command "{command}" on host {hostName}')
                                 else:
-                                    logger.info(f'Successfully connected and ran command({command})')
-                                finally:
-                                    logger.info(f'Command output: ({cmdOutput})')
+                                    logger.error(f'Command failed with exit status {exit_status}. Error: {error}')
+                            except paramiko.AuthenticationException as e:
+                                logger.error(f'Authentication failed, please verify your credentials. Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
+                                logger.exception(f'Exception Message: {e}')
+                            except paramiko.SSHException as e:
+                                logger.error(f'SSH error occurred. Exception Type: {type(e).__name__}')
+                                logger.exception(f"Exception Message: {e}")
+                            except Exception as e:
+                                logger.error(f'Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
+                                logger.exception(f'Exception Message: {e}')
+                            else:
+                                logger.info(f'Command "{command}" output is ({output})')
                         vSwitchInstanceListCmdOutput = cmdOutput[0]
                         vmsByName = get_vms(client, adapter_instance_id, content, host.get_key().name)
                         ports = get_ports(ssh, host, vSwitchInstanceListCmdOutput)                 

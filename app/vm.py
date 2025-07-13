@@ -14,33 +14,32 @@ from pyVmomi import vim
 logger = logging.getLogger(__name__)
 
 def get_vms(suite_api_client: SuiteApiClient, adapter_instance_id: str, content: Any, hostname: str) -> Any:
-    container = content.rootFolder  # starting point to look into
-    view_type = [vim.VirtualMachine]  # object types to look for
-    recursive = True  # whether we should look into it recursively
-    container_view = content.viewManager.CreateContainerView(container, view_type, recursive)
-    result = []
+    vmsByName = {}
     
-    
-    vms: List[Object] = suite_api_client.query_for_resources(
-        {
-            "adapterKind": [VCENTER_ADAPTER_KIND],
-            "resourceKind": ["VirtualMachine"],
-            "adapterInstanceId": [adapter_instance_id],
-            "propertyConditions" : {
-                "conjunctionOperator" : "OR",
-                "conditions" : [ {
-                    "key" : "summary|parentHost",
-                    "operator" : "EQ",
-                    "stringValue" : hostname
-                }]
-            },
-        }
-    )
-
-    vmsByName = {}           
-    for vm in vms:        
-        vmsByName.setdefault(vm.get_key().name, []).append(vm) 
-
+    try:
+        logger.info(f'Making VCF Operations REST API call to retrieve a list of Virtual Machines for the ESXi host {hostname}')
+        vms: List[Object] = suite_api_client.query_for_resources(
+            {
+                "adapterKind": [VCENTER_ADAPTER_KIND],
+                "resourceKind": ["VirtualMachine"],
+                "adapterInstanceId": [adapter_instance_id],
+                "propertyConditions" : {
+                    "conjunctionOperator" : "OR",
+                    "conditions" : [ {
+                        "key" : "summary|parentHost",
+                        "operator" : "EQ",
+                        "stringValue" : hostname
+                    }]
+                },
+            }
+        )
+        logger.info(f'VCF Operations REST API call returned response with {len(vms)} Virtual Machine objects')
+                   
+        for vm in vms:        
+            vmsByName.setdefault(vm.get_key().name, []).append(vm)
+    except Exception as e:
+        logger.error(f'Exception occured while getting a list of virtual machines from VCF Operations. Exception Type: {type(e).__name__}')
+        logger.exception(f'Exception Message: {e}') 
     return vmsByName
    
     

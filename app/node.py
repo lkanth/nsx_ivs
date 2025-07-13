@@ -13,9 +13,7 @@ from aria.ops.object import Object
 import paramiko
 from paramiko import SSHClient
 
-
 logger = logging.getLogger(__name__)
-
 
 class Node(Object):
 
@@ -52,9 +50,9 @@ def get_nodes(ssh: SSHClient, host: Object):
     hostName = host.get_key().name
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
-    with Timer(logger, f'Node collection on host {hostName}'):
+    with Timer(logger, f'Node object collection on host {hostName}'):
         try:
-            logger.info(f'Running command {command} on host {hostName}')
+            logger.info(f'Running command "{command}" on host {hostName}')
             stdin, stdout, stderr = ssh.exec_command(command, timeout=constants.SSH_COMMAND_TIMEOUT)
             error = stderr.read().decode().strip()
             result = stdout.read().decode()
@@ -62,18 +60,18 @@ def get_nodes(ssh: SSHClient, host: Object):
             if exit_status == 0:
                 logger.info(f'Successfully ran the command "{command}" on host {hostName}')
             else:
-                logger.error(f"Command failed with exit status {exit_status}. Error: {error}")
+                logger.error(f'Command failed with exit status {exit_status}. Error: {error}')
         except paramiko.AuthenticationException as e:
-            logger.error(f"Authentication failed, please verify your credentials. Exception occured while executing command {command}. Exception Type: {type(e).__name__}")
-            logger.exception(f"Exception Message: {e}")
+            logger.error(f'Authentication failed, please verify your credentials. Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
+            logger.exception(f'Exception Message: {e}')
         except paramiko.SSHException as e:
-            logger.error(f"SSH error occurred. Exception Type: {type(e).__name__}")
-            logger.exception(f"Exception Message: {e}")
+            logger.error(f'SSH error occurred. Exception Type: {type(e).__name__}')
+            logger.exception(f'Exception Message: {e}')
         except Exception as e:
-            logger.error(f"Exception occured while executing command {command}. Exception Type: {type(e).__name__}")
-            logger.exception(f"Exception Message: {e}")
+            logger.error(f'Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
+            logger.exception(f'Exception Message: {e}')
         else:
-            logger.info(f'Node collection command output {result})')
+            logger.info(f'Node collection command output "{result}"')
 
         try:
             node_results = re.split("\n", result)
@@ -102,8 +100,8 @@ def get_nodes(ssh: SSHClient, host: Object):
                 else:
                     i += 1
         except Exception as e:
-            logger.error(f"Exception occured while parsing command output {result}. Exception Type: {type(e).__name__}")
-            logger.exception(f"Exception Message: {e}")
+            logger.error(f'Exception occured while parsing command output "{result}". Exception Type: {type(e).__name__}')
+            logger.exception(f'Exception Message: {e}')
     logger.info(f'Collected {len(nodes)} nodes from host {hostName}') 
     return nodes
 
