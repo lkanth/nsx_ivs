@@ -140,7 +140,7 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
             else:
                 logger.error(f'Number of commands executed does not match with the number of outputs retrieved')               
         else:
-            logger.error(f'Found zero DvSPortSets')
+            logger.info(f'Found zero DvSPortSets')
     logger.info(f'Collected {len(vdanObjects)} VDAN objects from host {hostName}')
     return vdanObjects
 

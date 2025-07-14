@@ -145,9 +145,9 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                 else:
                     logger.error(f'Number of commands executed does not match with the number of outputs retrieved')
             else:
-                logger.error(f'Found zero DvSPortSets')
+                logger.info(f'Found zero DvSPortSets')
         else:
-            logger.error(f'"nsxdp-cli vswitch instance list command output is empty: "{vSwitchInstanceListCmdOutput}')
+            logger.info(f'"nsxdp-cli vswitch instance list command output is empty: "{vSwitchInstanceListCmdOutput}')
     logger.info(f'Collected {len(ports)} ports from host {hostName}')            
     return ports
 
@@ -226,9 +226,9 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
                             logger.error(f'Exception occured while creating VM and VLAN relationship to ports. Exception Type: {type(e).__name__}')
                             logger.exception(f'Exception Message: {e}')
                 else:
-                    logger.error(f'Found zero DvSPortSets')
+                    logger.info(f'Found zero DvSPortSets')
             else:
-                logger.error(f'"nsxdp-cli vswitch instance list command output is empty: "{vSwitchInstanceListCmdOutput}')
+                logger.info(f'"nsxdp-cli vswitch instance list command output is empty: "{vSwitchInstanceListCmdOutput}')
         else:
             logger.info(f'No relations to ports can be added. Port list is empty - ({ports})')
         
