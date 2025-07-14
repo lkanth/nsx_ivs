@@ -132,6 +132,8 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                                 
                                 vdanObj.add_parent(host)
                                 vdanObjects.append(vdanObj)
+                            else:
+                                logger.error(f'VDAN Index does not exist in parsed VDAN list command output: {vdanResults}') 
                     except:
                         logger.error(f"Exception occured while parsing command output {result}. Exception Type: {type(e).__name__}")
                         logger.exception(f"Exception Message: {e}")

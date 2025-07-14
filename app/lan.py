@@ -116,6 +116,8 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                                         lan.with_property("policy", value=parsed_lan_output[lanItem]["policy"])
                                     lan.add_parent(host)
                                     lanObjectList.append(lan)
+                        else:
+                            logger.error(f'List of Lans is empty in the parsed lan output: {parsed_lan_output}') 
                     except Exception as e:
                         logger.error(f'Exception occured while parsing command output {results[i]}. Exception Type: {type(e).__name__}')
                         logger.exception(f'Exception Message: {e}')
