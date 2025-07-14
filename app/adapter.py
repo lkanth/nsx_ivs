@@ -301,6 +301,13 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         break
                     else:
                         logger.info(f'*********** Starting data collection from host {hostName} ***********')
+                        
+                        nodes = get_nodes(sshClient, host)
+                        for node in nodes:
+                            vlan = vlans.get(node.get_property('vlan_id')[0].value)
+                            if vlan:
+                                node.add_parent(vlan)
+                        
                         commands = ['nsxdp-cli vswitch instance list']
                         cmdOutput = []                        
                         for command in commands:
@@ -340,11 +347,6 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             if vlan:
                                 vdan.add_parent(vlan)                                
 
-                        nodes = get_nodes(sshClient, host)
-                        for node in nodes:
-                            vlan = vlans.get(node.get_property('vlan_id')[0].value)
-                            if vlan:
-                                node.add_parent(vlan)
                         lans = get_lans(sshClient, host, vSwitchInstanceListCmdOutput)
                         if len(vmObjectList) > 0:
                             for vmObject in vmObjectList:
@@ -360,8 +362,11 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         sshClient.close()
                         logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
                 except Exception as e:
-                    logger.error(f"Exception occured while collecting objects and metrics. Exception Type: {type(e).__name__}")
+                    logger.error(f"Exception occured while collecting data from host {hostName}. Exception Type: {type(e).__name__}")
                     logger.exception(f'Exception Message: {e}')
+                finally:
+                    if SSHClient is not None and SSHClient:
+                        sshClient.close()
             try:
                 result.add_objects(hosts)                                  
                 for vm in RelAddedToVMObjects:                                        
