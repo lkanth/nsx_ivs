@@ -37,20 +37,18 @@ class Port(Object):
                 adapter_kind=constants.ADAPTER_KIND,
                 # object_kind should match the key used for the ResourceKind in line 15 of the describe.xml
                 object_kind="port",
-                identifiers=[Identifier(key="port", value=uuid), Identifier(key="host", value=host)],
+                identifiers=[Identifier(key="uuid", value=uuid), Identifier(key="host", value=host)],
             )
         )
 
 
-def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
+def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, switches: List):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
     :param api: AVISession object
     :return: A list of all Switch Objects collected, along with their properties, and metrics
     """
-    uuidPorts = []
-    prpDvsPortsetNumbers = []
     ports = []
     commands = []
     results = []
@@ -59,11 +57,10 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'Port objects collection on host {hostName}'):
         if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
-            prpDvsPortsetNumbers = re.findall(r'^DvsPortset-(\d+)\s*\(.*', vSwitchInstanceListCmdOutput, re.MULTILINE)
-            for prpDvsPortNumber in prpDvsPortsetNumbers:
-                commands.append("nsxdp-cli ens latency system dump -s " + str(prpDvsPortNumber))
-            for prpDvsPortNumber in prpDvsPortsetNumbers:    
-                commands.append("nsxdp-cli ens latency system clear -s " + str(prpDvsPortNumber))
+            for ensSwitchID in ensSwitchIDList:
+                commands.append("nsxdp-cli ens latency system dump -s " + str(ensSwitchID))
+            for ensSwitchID in ensSwitchIDList:    
+                commands.append("nsxdp-cli ens latency system clear -s " + str(ensSwitchID))
             numOfCommands = len(commands)
             if numOfCommands > 0:
                 for command in commands:
@@ -91,7 +88,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                         logger.info(f'Command "{command}" output is ({output})')
 
                 if len(results) == len(commands): 
-                    for i in range(len(prpDvsPortsetNumbers)):
+                    for i in range(len(ensSwitchIDList)):
                         port_results = re.split("PortID:\s+", results[i])[1:]
                         if port_results is not None and port_results and len(port_results) > 0:
                             for port_result in port_results:
@@ -99,6 +96,9 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                                     lines = re.split("\n", port_result)
                                     if len(lines) > 1:
                                         portIDFromCmdOutput = re.split("\s+", lines[0])[0]
+                                        if portIDFromCmdOutput is None or portIDFromCmdOutput == '':
+                                            logger.info(f'Port ID is either null or empty. Port object not created.')
+                                            break
                                         uuid = portIDFromCmdOutput + "_" + hostName
                                         port = Port(name=portIDFromCmdOutput, uuid=uuid, host=hostName)                                
                                         samples_line = re.split("\s+", lines[2])
@@ -108,32 +108,45 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
 
                                         port.with_property("esxi_host", hostName)                                                       
 
-                                        port.add_metric(
-                                            Metric(key="tx_total_samples", value=samples_line[1])
-                                        )
-                                        port.add_metric(
-                                            Metric(key="rx_total_samples", value=samples_line[2])
-                                        )
+                                        if samples_line[1] is not None and samples_line[1] != '':
+                                            port.with_metric("tx_total_samples", samples_line[1])
+                                        else:
+                                            logger.info(f'tx_total_samples is either null or empty. Port metric tx_total_samples value was not collected.')
+                                        if min_latency[1] is not None and min_latency[1] != '':
+                                            port.with_metric("tx_min_latency",min_latency[1])
+                                        else:
+                                            logger.info(f'tx_min_latency is either null or empty. Port metric tx_min_latency value was not collected.')
+                                        if max_latency[1] is not None and max_latency[1] != '':
+                                            port.with_metric("tx_max_latency",max_latency[1])
+                                        else:
+                                            logger.info(f'tx_max_latency is either null or empty. Port metric tx_max_latency value was not collected.')
+                                        if mean_line[1] is not None and mean_line[1] != '':
+                                            port.with_metric("tx_mean",mean_line[1])
+                                        else:
+                                            logger.info(f'tx_mean is either null or empty. Port metric tx_mean value was not collected.')
 
-                                        port.add_metric(
-                                            Metric(key="tx_min_latency", value=min_latency[1])
-                                        )
-                                        port.add_metric(
-                                            Metric(key="tx_max_latency", value=max_latency[1])
-                                        )
-                                        port.add_metric(
-                                            Metric(key="tx_mean", value=mean_line[1])
-                                        )
-                                        port.add_metric(
-                                            Metric(key="rx_min_latency", value=min_latency[2])
-                                        )
-                                        port.add_metric(
-                                            Metric(key="rx_max_latency", value=max_latency[2])
-                                        )
-                                        port.add_metric(
-                                            Metric(key="rx_mean", value=mean_line[2])
-                                        )
-                                        port.add_parent(host)
+                                        if samples_line[2] is not None and samples_line[2] != '':
+                                            port.with_metric("rx_total_samples", samples_line[2])
+                                        else:
+                                            logger.info(f'rx_total_samples is either null or empty. Port metric rx_total_samples value was not collected.')
+                                        if min_latency[2] is not None and min_latency[2] != '':
+                                            port.with_metric("rx_min_latency",min_latency[2])
+                                        else:
+                                            logger.info(f'rx_min_latency is either null or empty. Port metric rx_min_latency value was not collected.')
+                                        if max_latency[2] is not None and max_latency[2] != '':
+                                            port.with_metric("rx_max_latency",max_latency[2])
+                                        else:
+                                            logger.info(f'rx_max_latency is either null or empty. Port metric rx_max_latency value was not collected.')
+                                        if mean_line[2] is not None and mean_line[2] != '':
+                                            port.with_metric("rx_mean",mean_line[2])
+                                        else:
+                                            logger.info(f'rx_mean is either null or empty. Port metric rx_mean value was not collected.')
+
+                                        for switch in switches:
+                                            switchID = switch.get_property_values("switch_id")[0]
+                                            if switchID == ensSwitchIDList[i]:
+                                                port.add_parent(switch)
+                                                break
                                         ports.append(port)
                                     else:
                                         logger.error(f'Found no metric information for the port: {port_result} on host {hostName}')

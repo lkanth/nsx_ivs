@@ -74,6 +74,7 @@ def get_nodes(ssh: SSHClient, host: Object):
             logger.info(f'Node collection command output "{result}"')
 
         try:
+            logger.info(f'Parsing node collection result')
             node_results = re.split("\n", result)
             i = 2
 
@@ -97,6 +98,7 @@ def get_nodes(ssh: SSHClient, host: Object):
                     )
                     lnode.add_parent(host)
                     nodes.append(lnode)
+                    i+=1
                 else:
                     i += 1
         except Exception as e:

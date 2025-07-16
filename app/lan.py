@@ -40,12 +40,12 @@ class Lan(Object):
                 adapter_kind=constants.ADAPTER_KIND,
                 # object_kind should match the key used for the ResourceKind in line 15 of the describe.xml
                 object_kind="lan",
-                identifiers=[Identifier(key="lan", value=uuid), Identifier(key="host", value=host), Identifier(key="switchID", value=switchID)],
+                identifiers=[Identifier(key="uuid", value=uuid), Identifier(key="host", value=host), Identifier(key="switchID", value=switchID)],
             )
         )
 
 
-def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
+def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, switches: List):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -60,9 +60,8 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'LAN objects collection on {hostName}'):
         if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
-            prpDvsPortsetNumbers = re.findall(r'^DvsPortset-(\d+)\s*\(.*', vSwitchInstanceListCmdOutput, re.MULTILINE)
-            for prpDvsPortNumber in prpDvsPortsetNumbers:
-                commands.append("nsxcli -c get ens prp config " + str(prpDvsPortNumber))
+            for ensSwitchID in ensSwitchIDList:
+                commands.append("nsxcli -c get ens prp config " + str(ensSwitchID))
         numOfCommands = len(commands)
         if numOfCommands > 0:
             for command in commands:
@@ -99,22 +98,39 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                             if key.startswith("Lan"):
                                 lanList.append(key)
                         if len(lanList) > 0:
-                            switchID = parsed_lan_output["prp_config"]["switch"]
+                            if "switchID" in parsed_lan_output and parsed_lan_output['switchID'] is not None and parsed_lan_output['switchID'] != '':
+                                switchID = parsed_lan_output['switchID']
+                            else:
+                                logger.info(f"switch ID not found in the LAN list (get ens prp config) command output on host {hostName}")
+                                break
                             switchIDStr = str(switchID)
                             for lanItem in lanList:
                                 if "status" in parsed_lan_output[lanItem]:                                
                                     uuid = lanItem + "_" + hostName + "_switch_" + switchIDStr
                                     lan = Lan(name=lanItem, uuid=uuid, host=hostName, switchID=switchIDStr)                               
                                     lan.with_property("esxi_host", hostName)
-                                    lan.with_property("switch", switchID)
-                                    lan.with_property("status", parsed_lan_output[lanItem]["status"])
-                                    if "uplink1" in parsed_lan_output[lanItem]:
+                                    lan.with_property("switch_id", switchID)
+                                    if "status" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['status'] is not None and parsed_lan_output[lanItem]['status']:
+                                        lan.with_property("status", parsed_lan_output[lanItem]["status"])
+                                    else:
+                                        logger.info(f'status is either null or empty. LAN metric status value was not collected.')
+                                    if "uplink1" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['uplink1'] is not None and parsed_lan_output[lanItem]['uplink1']:
                                         lan.with_property("uplink1", value=parsed_lan_output[lanItem]["uplink1"])
-                                    if "uplink2" in parsed_lan_output[lanItem]:
+                                    else:
+                                        logger.info(f'uplink1 is either null or empty. LAN metric uplink1 value was not collected.')
+                                    if "uplink2" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['uplink2'] is not None and parsed_lan_output[lanItem]['uplink2']:
                                         lan.with_property("uplink2", value=parsed_lan_output[lanItem]["uplink2"])
-                                    if "policy" in parsed_lan_output[lanItem]:
+                                    else:
+                                        logger.info(f'uplink2 is either null or empty. LAN metric uplink2 value was not collected.')
+                                    if "policy" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['policy'] is not None and parsed_lan_output[lanItem]['policy']:
                                         lan.with_property("policy", value=parsed_lan_output[lanItem]["policy"])
-                                    lan.add_parent(host)
+                                    else:
+                                        logger.info(f'policy is either null or empty. LAN metric policy value was not collected.')
+                                    for switch in switches:
+                                        switchID = switch.get_property_values("switch_id")[0]
+                                        if switchID == ensSwitchIDList[i]:
+                                            lan.add_parent(switch)
+                                            break
                                     lanObjectList.append(lan)
                         else:
                             logger.error(f'List of Lans is empty in the parsed lan output: {parsed_lan_output}') 
@@ -132,22 +148,18 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
 def parse_lan_output(output):
     result = {}
 
-    # Extract date/time
     date_line = re.search(r'^[A-Z][a-z]{2} [A-Z][a-z]{2} \d{1,2} \d{4} UTC \d{2}:\d{2}:\d{2}\.\d{3}', output, re.MULTILINE)
     if date_line:
         result['timestamp'] = date_line.group()
 
-    # Extract PRP switch config
     switch_match = re.search(r'PRP Config for switch\s+(\d+)', output)
     if switch_match:
-        result['prp_config'] = {'switch': int(switch_match.group(1))}
+        result['switchID'] = int(switch_match.group(1))
 
-    # Extract PRP uplink
     uplink_match = re.search(r'PRP uplink\(channel\)\s+(\S+)', output)
     if uplink_match:
-        result['prp_config']['uplink_channel'] = uplink_match.group(1)
+        result['uplink_channel'] = uplink_match.group(1)
 
-    # Extract LanA and LanB info
     lan_names = re.findall(r'^\s*(Lan\w+)', output, re.MULTILINE)
     distinct_lan_names = sorted(set(lan_names))
 
@@ -159,12 +171,10 @@ def parse_lan_output(output):
                 lan_info[field] = match.group(1)
         result[lan] = lan_info
 
-    # Extract Red Box MAC
     mac_match = re.search(r'Red Box MAC\s+([0-9a-f:]+)', output, re.IGNORECASE)
     if mac_match:
         result['red_box_mac'] = mac_match.group(1)
 
-    # Extract Supervision Multicast
     sm_match = re.search(r'Default Supervision Multicast\s+([0-9a-f:]+)', output, re.IGNORECASE)
     if sm_match:
         result['default_supervision_multicast'] = sm_match.group(1)

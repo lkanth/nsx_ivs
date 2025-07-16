@@ -8,6 +8,7 @@ from typing import List
 from typing import Optional
 from aria.ops.suite_api_client import key_to_object
 from aria.ops.suite_api_client import SuiteApiClient
+import re
 
 import paramiko
 from paramiko import SSHClient
@@ -45,6 +46,7 @@ import node
 import host
 import vlan
 import vm
+import switch
 from vlan import get_vlans
 from vlan import get_switch_property
 from port import add_port_relationships
@@ -55,6 +57,8 @@ from node import get_nodes
 from lan import get_lans
 from vm import get_vms
 from vdan import add_vdan_vm_relationship
+from switch import parseENSSwitchList
+from switch import get_switches
 logger = logging.getLogger(__name__)
 
 
@@ -91,6 +95,20 @@ def get_adapter_definition() -> AdapterDefinition:
             default=1024,
         )
 
+        switch = definition.define_object_type("switch", "NSX IvS Switch")
+        switch.define_string_identifier("uuid", "UUID")        
+        switch.define_string_identifier("host", "ESXi Server")
+        switch.define_numeric_property("switch_id", "Switch ID")
+        switch.define_string_property("internal_name", "Internal Name")
+        switch.define_string_property("esxi_host", "ESXi Host")
+        switch.define_string_property("lcore_ids", "LCore IDs")
+        switch.define_string_property("switch_uuid", "Switch UUID")
+        switch.define_numeric_property("max_ports", "Max Ports")
+        switch.define_numeric_property("num_active_ports", "Number of Active Ports")
+        switch.define_numeric_property("num_ports", "Number of Ports")
+        switch.define_numeric_property("MTU", "MTU")
+        switch.define_numeric_property("num_lcores", "Number of Lcores")
+        
         vdan = definition.define_object_type("vdan", "NSX IvS vDAN")
         vdan.define_string_identifier("uuid", "UUID")
         vdan.define_string_identifier("host", "ESXi Server")
@@ -121,7 +139,7 @@ def get_adapter_definition() -> AdapterDefinition:
         node.define_metric("node_age", "Node Age")
 
         lan = definition.define_object_type("lan", "NSX IvS LAN")
-        lan.define_string_identifier("lan", "LAN")        
+        lan.define_string_identifier("uuid", "UUID")        
         lan.define_string_identifier("host", "ESXi Server")
         lan.define_string_identifier("switchID", "Switch ID")
         lan.define_string_property("name", "Name")
@@ -130,7 +148,7 @@ def get_adapter_definition() -> AdapterDefinition:
         lan.define_string_property("policy", "Policy")
         lan.define_string_property("status", "Status")
         lan.define_string_property("esxi_host", "ESXi Host")
-        lan.define_numeric_property("switch", "Switch")
+        lan.define_numeric_property("switch_id", "Switch ID")
         
         '''
         lan.define_metric("prp_rx_pkts", "MAC Address")
@@ -147,7 +165,7 @@ def get_adapter_definition() -> AdapterDefinition:
         '''
 
         port = definition.define_object_type("port", "NSX IvS Port")
-        port.define_string_identifier("port", "Port")
+        port.define_string_identifier("uuid", "UUID")
         port.define_string_identifier("host", "ESXi Server")
         port.define_string_property("name", "Name")
         port.define_string_property("esxi_host", "ESXI Host")
@@ -307,8 +325,9 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             vlan = vlans.get(node.get_property('vlan_id')[0].value)
                             if vlan:
                                 node.add_parent(vlan)
+                        result.add_objects(nodes)
                         
-                        commands = ['nsxdp-cli vswitch instance list']
+                        commands = ['nsxdp-cli ens switch list','nsxdp-cli vswitch instance list']
                         cmdOutput = []                        
                         for command in commands:
                             try:
@@ -333,12 +352,36 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                                 logger.exception(f'Exception Message: {e}')
                             else:
                                 logger.info(f'Command "{command}" output is ({output})')
-                        vSwitchInstanceListCmdOutput = cmdOutput[0]
+                        ensSwitchListCmdOutput = cmdOutput[0]
+                        vSwitchInstanceListCmdOutput = cmdOutput[1]
+
+                        if ensSwitchListCmdOutput is not None and ensSwitchListCmdOutput:
+                            parsedENSSwitchList = parseENSSwitchList(ensSwitchListCmdOutput)
+                            if parsedENSSwitchList is not None and parsedENSSwitchList and len(parsedENSSwitchList) > 0:
+                                ensSwitchIDList = []
+                                for ensSwitch in parsedENSSwitchList:
+                                    if "swID" in ensSwitch:
+                                        ensSwitchIDList.append(ensSwitch['swID'])
+                                if ensSwitchIDList is None or not ensSwitchIDList or len(ensSwitchIDList) == 0:
+                                    logger.info(f'No ENS switches are configured on host {hostName}')
+                                    break
+                            else:
+                                logger.info(f'No ENS switches are configured on host {hostName}')
+                                break
+                        else:
+                            logger.info(f'No ENS switches are configured on host {hostName}')
+                            break
+                        
+                        if vSwitchInstanceListCmdOutput is None or not vSwitchInstanceListCmdOutput:
+                            logger.info(f'vSwitch instance List command output on host {hostName} is null or empty.')
+                            break
+                        
+                        switches = get_switches(host, parsedENSSwitchList, vSwitchInstanceListCmdOutput)
                         vmsByName = get_vms(client, adapter_instance_id, content, host.get_key().name)
-                        ports = get_ports(sshClient, host, vSwitchInstanceListCmdOutput)                 
+                        ports = get_ports(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, switches)                 
                         vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlans, ports, vmsByName, client)
 
-                        vdans = get_vdans(sshClient, host, vSwitchInstanceListCmdOutput)
+                        vdans = get_vdans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, switches)
                         vDANVMList = add_vdan_vm_relationship(vdans, vmMacNameDict, vmsByName, client)
                         
                         for vdan in vdans:
@@ -347,7 +390,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             if vlan:
                                 vdan.add_parent(vlan)                                
 
-                        lans = get_lans(sshClient, host, vSwitchInstanceListCmdOutput)
+                        lans = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, switches)
                         if len(vmObjectList) > 0:
                             for vmObject in vmObjectList:
                                 RelAddedToVMObjects.append(vmObject)
@@ -355,8 +398,8 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             for vDANVMObject in vDANVMList:
                                 if vDANVMObject not in RelAddedToVMObjects:
                                     RelAddedToVMObjects.append(vmObject)                                         
-                        result.add_objects(vdans)
-                        result.add_objects(nodes)
+                        result.add_objects(switches)
+                        result.add_objects(vdans)                      
                         result.add_objects(lans)
                         result.add_objects(ports)
                         sshClient.close()
@@ -379,6 +422,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
 
     logger.debug(f"Returning collection result {result.get_json()}")
     return result
+
 
 
 def get_endpoints(adapter_instance: AdapterInstance) -> EndpointResult:

@@ -40,7 +40,7 @@ class vDAN(Object):
             )
         )
 
-def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
+def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, switches: List):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -55,9 +55,8 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'vDAN objects collection on {host.get_key().name} '):
         if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
-            prpDvsPortsetNumbers = re.findall(r'^DvsPortset-(\d+)\s*\(.*', vSwitchInstanceListCmdOutput, re.MULTILINE)
-            for prpDvsPortNumber in prpDvsPortsetNumbers:
-                commands.append("nsxdp-cli ens prp stats vdan list -s " + str(prpDvsPortNumber))
+            for ensSwitchID in ensSwitchIDList:
+                commands.append("nsxdp-cli ens prp stats vdan list -s " + str(ensSwitchID))
         numOfCommands = len(commands)
         if numOfCommands > 0:
             for command in commands:
@@ -85,11 +84,11 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                     logger.info(f'Command "{command}" output is ({output})')
 
             if len(results) == len(commands):
-                for result in results:
+                for i in range(len(ensSwitchIDList)):
                     try:
-                        vdanResults = parse_vdan_output(result)
+                        vdanResults = parse_vdan_output(results[i])
                         for vdan in vdanResults:
-                            if "vdanIndex" in vdan:
+                            if "vdanIndex" in vdan and vdan['vdanIndex'] is not None and vdan['vdanIndex'] != '':
                                 uuid = str(vdan["vdanIndex"]) + "_" + hostName                    
                                 vdanObj = vDAN(
                                     name=str(vdan["vdanIndex"]),
@@ -99,38 +98,42 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str):
                                 vdanObj.with_property("esxi_host",hostName)
                                 if "vdanIndex" in vdan:
                                     vdanObj.with_property("vdan_id",vdan["vdanIndex"])
-                                if "mac" in vdan:
+                                if "mac" in vdan and vdan['mac'] is not None and vdan['mac']:
                                     vdanObj.with_property("mac", vdan["mac"])
-                                if "vlanID" in vdan:
+                                if "vlanID" in vdan and vdan['vlanID'] is not None and vdan['vlanID'] != '':
                                     vdanObj.with_property("vlan_id", vdan["vlanID"])
-                                if "fcPortID" in vdan:
+                                if "fcPortID" in vdan and vdan['fcPortID'] is not None and vdan['fcPortID'] != '':
                                     vdanObj.with_property("fc_port_id", vdan["fcPortID"])
-                                if "vDANAge" in vdan:
+                                if "vDANAge" in vdan and vdan['vDANAge'] is not None and vdan['vDANAge'] != '':
                                     vdanObj.with_metric("vdan_age", vdan["vDANAge"])
 
-                                if "lanA" in vdan and "prpTxPkts" in vdan["lanA"]:
+                                if "lanA" in vdan and "prpTxPkts" in vdan["lanA"] and vdan["lanA"]["prpTxPkts"] is not None and vdan["lanA"]["prpTxPkts"] != '':
                                     vdanObj.with_metric("lanA_prpTxPkts", vdan["lanA"]["prpTxPkts"])   
-                                if "lanA" in vdan and "nonPRPPkts" in vdan["lanA"]:
+                                if "lanA" in vdan and "nonPRPPkts" in vdan["lanA"] and vdan["lanA"]["nonPRPPkts"] is not None and vdan["lanA"]["nonPRPPkts"] != '':
                                     vdanObj.with_metric("lanA_nonPRPPkts", vdan["lanA"]["nonPRPPkts"])
-                                if "lanA" in vdan and "txBytes" in vdan["lanA"]:
+                                if "lanA" in vdan and "txBytes" in vdan["lanA"] and vdan["lanA"]["txBytes"] is not None and vdan["lanA"]["txBytes"] != '':
                                     vdanObj.with_metric("lanA_txBytes", vdan["lanA"]["txBytes"]) 
-                                if "lanA" in vdan and "txDrops" in vdan["lanA"]:
+                                if "lanA" in vdan and "txDrops" in vdan["lanA"] and vdan["lanA"]["txDrops"] is not None and vdan["lanA"]["txDrops"] != '':
                                     vdanObj.with_metric("lanA_txDrops", vdan["lanA"]["txDrops"]) 
-                                if "lanA" in vdan and "supTxPkts" in vdan["lanA"]:
+                                if "lanA" in vdan and "supTxPkts" in vdan["lanA"] and vdan["lanA"]["supTxPkts"] is not None and vdan["lanA"]["supTxPkts"] != '':
                                     vdanObj.with_metric("lanA_supTxPkts", vdan["lanA"]["supTxPkts"])
 
-                                if "lanB" in vdan and "prpTxPkts" in vdan["lanB"]:
+                                if "lanB" in vdan and "prpTxPkts" in vdan["lanB"] and vdan["lanB"]["prpTxPkts"] is not None and vdan["lanB"]["prpTxPkts"] != '':
                                     vdanObj.with_metric("lanB_prpTxPkts", vdan["lanB"]["prpTxPkts"])   
-                                if "lanB" in vdan and "nonPRPPkts" in vdan["lanB"]:
+                                if "lanB" in vdan and "nonPRPPkts" in vdan["lanB"] and vdan["lanB"]["nonPRPPkts"] is not None and vdan["lanB"]["nonPRPPkts"] != '':
                                     vdanObj.with_metric("lanB_nonPRPPkts", vdan["lanB"]["nonPRPPkts"])
-                                if "lanB" in vdan and "txBytes" in vdan["lanB"]:
+                                if "lanB" in vdan and "txBytes" in vdan["lanB"] and vdan["lanB"]["txBytes"] is not None and vdan["lanB"]["txBytes"] != '':
                                     vdanObj.with_metric("lanB_txBytes", vdan["lanB"]["txBytes"]) 
-                                if "lanB" in vdan and "txDrops" in vdan["lanB"]:
+                                if "lanB" in vdan and "txDrops" in vdan["lanB"] and vdan["lanB"]["txDrops"] is not None and vdan["lanB"]["txDrops"] != '':
                                     vdanObj.with_metric("lanB_txDrops", vdan["lanB"]["txDrops"]) 
-                                if "lanB" in vdan and "supTxPkts" in vdan["lanB"]:
-                                    vdanObj.with_metric("lanB_supTxPkts", vdan["lanB"]["supTxPkts"])                     
-                                
-                                vdanObj.add_parent(host)
+                                if "lanB" in vdan and "supTxPkts" in vdan["lanB"] and vdan["lanB"]["supTxPkts"] is not None and vdan["lanB"]["supTxPkts"] != '':
+                                    vdanObj.with_metric("lanB_supTxPkts", vdan["lanB"]["supTxPkts"])
+
+                                for switch in switches:
+                                    switchID = switch.get_property_values("switch_id")[0]
+                                    if switchID == ensSwitchIDList[i]:
+                                        vdanObj.add_parent(switch)
+                                        break                  
                                 vdanObjects.append(vdanObj)
                             else:
                                 logger.error(f'VDAN Index does not exist in parsed VDAN list command output: {vdanResults}') 
