@@ -131,7 +131,10 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
 
                                 for switch in switches:
                                     switchID = switch.get_property_values("switch_id")[0]
+                                    switchName = switch.get_key().name
                                     if switchID == ensSwitchIDList[i]:
+                                        vdanObj.with_property("switch_id",switchID)
+                                        vdanObj.with_property("switch_name",switchName)
                                         vdanObj.add_parent(switch)
                                         break                  
                                 vdanObjects.append(vdanObj)

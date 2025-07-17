@@ -127,10 +127,13 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                                     else:
                                         logger.info(f'policy is either null or empty. LAN metric policy value was not collected.')
                                     for switch in switches:
-                                        switchID = switch.get_property_values("switch_id")[0]
-                                        if switchID == ensSwitchIDList[i]:
-                                            lan.add_parent(switch)
-                                            break
+                                            switchID = switch.get_property_values("switch_id")[0]
+                                            switchName = switch.get_key().name
+                                            if switchID == ensSwitchIDList[i]:
+                                                lan.with_property("switch_id",switchID)
+                                                lan.with_property("switch_name",switchName)
+                                                lan.add_parent(switch)
+                                                break
                                     lanObjectList.append(lan)
                         else:
                             logger.error(f'List of Lans is empty in the parsed lan output: {parsed_lan_output}') 

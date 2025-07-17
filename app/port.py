@@ -144,7 +144,10 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
 
                                         for switch in switches:
                                             switchID = switch.get_property_values("switch_id")[0]
+                                            switchName = switch.get_key().name
                                             if switchID == ensSwitchIDList[i]:
+                                                port.with_property("switch_id",switchID)
+                                                port.with_property("switch_name",switchName)
                                                 port.add_parent(switch)
                                                 break
                                         ports.append(port)
