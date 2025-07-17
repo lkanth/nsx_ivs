@@ -99,7 +99,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                         portIDFromCmdOutput = re.split("\s+", lines[0])[0]
                                         if portIDFromCmdOutput is None or portIDFromCmdOutput == '':
                                             logger.info(f'Port ID is either null or empty. Port object not created.')
-                                            break
+                                            continue
                                         uuid = portIDFromCmdOutput + "_" + hostName
                                         port = Port(name=portIDFromCmdOutput, uuid=uuid, host=hostName)                                
                                         samples_line = re.split("\s+", lines[2])

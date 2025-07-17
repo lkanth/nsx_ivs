@@ -72,33 +72,32 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
                         ensSwitchName = ensSwitch['name']
                     else:
                         logger.info(f'Switch name not found in the ENS switch list command output on host {hostName}')
-                        break
+                        continue
                     if "swID" in ensSwitch and ensSwitch['swID'] is not None and ensSwitch['swID'] != '':
                         swID = ensSwitch['swID']
                     else:
                         logger.info(f"switch ID not found in the ENS switch list command output on host {hostName}")
-                        break
+                        continue
                     if "maxPorts" in ensSwitch and ensSwitch['maxPorts'] is not None and ensSwitch['maxPorts'] != '':
                         maxPorts = ensSwitch['maxPorts']
                     else:
                         logger.info(f'Max ports not found in the ENS switch list command output on host {hostName}')
-                        break
+                        continue
                     if "mtu" in ensSwitch and ensSwitch['mtu'] is not None and ensSwitch['mtu'] != '':
                         mtu = ensSwitch['mtu']
                     else:
                         logger.info(f'MTU not found in the ENS switch list command output on host {hostName}')
-                        break
+                        continue
                     if "numLcores" in ensSwitch and ensSwitch['numLcores'] is not None and ensSwitch['numLcores'] != '':
                         numLcores = ensSwitch['numLcores']
                     else:
                         logger.info(f'Number of LCores not found in the ENS switch list command output on host {hostName}')
-                        break
+                        continue
                     if "lcoreIDs" in ensSwitch and ensSwitch['lcoreIDs'] is not None and ensSwitch['lcoreIDs'] != '':
                         lcoreIDs = ensSwitch['lcoreIDs']
-                        #lcoreIDs = ' '.join(str(lcoreIDsList))
                     else:
                         logger.info(f'lcoreIDs not found in the ENS switch list command output on host {hostName}')
-                        break
+                        continue
                     for vSwitchInstance in vSwitchInstances:
                         if vSwitchInstance['vSwitchName'] == ensSwitchName:
                             friendlyName = vSwitchInstance['friendlyName']
@@ -106,11 +105,11 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
 
                     if friendlyName is None or not friendlyName:
                         logger.info(f'Switch Label is either Null or Empty on host {hostName}')
-                        break
+                        continue
 
                     if switchUUID is None or not switchUUID:
                         logger.info(f'Switch UUID is either Null or Empty on host {hostName}')
-                        break
+                        continue
                     
                     foundMasterSwitch = False
                     if masterSwitchList is not None and masterSwitchList and len(masterSwitchList) > 0:

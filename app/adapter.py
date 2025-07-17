@@ -148,20 +148,6 @@ def get_adapter_definition() -> AdapterDefinition:
         lan.define_string_property("esxi_host", "ESXi Host")
         lan.define_numeric_property("switch_id", "Switch ID")
         lan.define_string_property("switch_name", "Switch Name")
-        
-        '''
-        lan.define_metric("prp_rx_pkts", "MAC Address")
-        lan.define_metric("non_prp_rx_pkts", "vLAN")
-        lan.define_metric("tx_bytes", "Tx Bytes")
-        lan.define_metric("tx_drops", "Tx Drops")
-        lan.define_metric("sup_tx_drops", "Sup Tx Drops")
-        lan.define_metric("rx_bytes", "Rx Bytes")
-        lan.define_metric("dup_drops", "Dup Drops")
-        lan.define_metric("sup_rx_pkts", "Sup Rx Packats")
-        lan.define_metric("sup_tx_pkts", "Sup Tx Packats")
-        lan.define_metric("out_of_order_drops", "Out Of Order Drops")
-        lan.define_metric("wrong_lan_drops", "Wrong LAN Drops")
-        '''
 
         port = definition.define_object_type("port", "NSX IvS Port")
         port.define_string_identifier("uuid", "UUID")
@@ -285,10 +271,12 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
             vlans = get_vlans(client,adapter_instance_id)
             RelAddedToVMObjects = []
             masterSwitchList = []
-            
+            hostCount = 0
             for host in hosts:
                 try:
+                    hostCount += 1
                     hostName = host.get_key().name
+                    logger.info(f'Host number {hostCount} name is {hostName}')
                     hostAddress = get_host_property(client, host, "net|mgmt_address")
                     if hostAddress is not None and hostAddress:
                         sshClient = paramiko.SSHClient()
@@ -298,26 +286,30 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         transport.set_keepalive(60) 
                     else:
                         logger.error(f'Host management address property value not found for host object: {hostName}')
-                        break
+                        continue
                 except paramiko.AuthenticationException as e:
                     logger.error(f'Authentication failed, please verify your credentials. Exception Type: {type(e).__name__}')
                     logger.exception(f'Exception Message: {e}')
-                    break  
+                    logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                    continue  
                 except paramiko.SSHException as e:
                     logger.error(f'Could not establish SSH connection. Exception Type: {type(e).__name__}')
                     logger.exception(f'Exception Message: {e}')
-                    break
+                    logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                    continue
                 except Exception as e:
                     logger.error(f'An error occurred, Exception Type: {type(e).__name__}')
                     logger.exception(f'Exception Message: {e}')
-                    break
+                    logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                    continue
                 else:
                     logger.info(f'Connected to host({hostAddress})')
 
                 try:
                     if sshClient is None or not sshClient:
                         logger.error(f'SSH connection to {hostName} has failed. Unable to collect data from host {hostName}')
-                        break
+                        logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                        continue
                     else:
                         logger.info(f'*********** Starting data collection from host {hostName} ***********')
                         
@@ -345,12 +337,18 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             except paramiko.AuthenticationException as e:
                                 logger.error(f'Authentication failed, please verify your credentials. Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
                                 logger.exception(f'Exception Message: {e}')
+                                logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                                continue
                             except paramiko.SSHException as e:
                                 logger.error(f'SSH error occurred. Exception Type: {type(e).__name__}')
                                 logger.exception(f"Exception Message: {e}")
+                                logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                                continue
                             except Exception as e:
                                 logger.error(f'Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
                                 logger.exception(f'Exception Message: {e}')
+                                logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                                continue
                             else:
                                 logger.info(f'Command "{command}" output is ({output})')
                         ensSwitchListCmdOutput = cmdOutput[0]
@@ -365,17 +363,21 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                                         ensSwitchIDList.append(ensSwitch['swID'])
                                 if ensSwitchIDList is None or not ensSwitchIDList or len(ensSwitchIDList) == 0:
                                     logger.info(f'No ENS switches are configured on host {hostName}')
-                                    break
+                                    logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                                    continue
                             else:
                                 logger.info(f'No ENS switches are configured on host {hostName}')
-                                break
+                                logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                                continue
                         else:
                             logger.info(f'No ENS switches are configured on host {hostName}')
-                            break
+                            logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                            continue
                         
                         if vSwitchInstanceListCmdOutput is None or not vSwitchInstanceListCmdOutput:
                             logger.info(f'vSwitch instance List command output on host {hostName} is null or empty.')
-                            break
+                            logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
+                            continue
                         
                         switches = get_switches(host, parsedENSSwitchList, vSwitchInstanceListCmdOutput, masterSwitchList)
                         for switchObj in switches:

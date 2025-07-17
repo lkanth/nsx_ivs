@@ -103,7 +103,7 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                                 switchID = parsed_lan_output['switchID']
                             else:
                                 logger.info(f"switch ID not found in the LAN list (get ens prp config) command output on host {hostName}")
-                                break
+                                continue
                             switchIDStr = str(switchID)
                             for lanItem in lanList:
                                 if "status" in parsed_lan_output[lanItem]:                                
