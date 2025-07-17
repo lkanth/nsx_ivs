@@ -56,6 +56,7 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
     lanObjectList = []
     commands = []
     results = []
+    lanToSwitchRelationsAdded = 0
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'LAN objects collection on {hostName}'):
@@ -126,14 +127,22 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                                         lan.with_property("policy", value=parsed_lan_output[lanItem]["policy"])
                                     else:
                                         logger.info(f'policy is either null or empty. LAN metric policy value was not collected.')
+                                    
+                                    addedLANToSwitchRelationShip = False
                                     for switch in switches:
-                                            switchID = switch.get_property_values("switch_id")[0]
-                                            switchName = switch.get_key().name
-                                            if switchID == ensSwitchIDList[i]:
-                                                lan.with_property("switch_id",switchID)
-                                                lan.with_property("switch_name",switchName)
-                                                lan.add_parent(switch)
-                                                break
+                                        switchID = switch.get_property_values("switch_id")[0]
+                                        switchName = switch.get_key().name
+                                        if switchID == ensSwitchIDList[i]:
+                                            lan.with_property("switch_id",switchID)
+                                            lan.with_property("switch_name",switchName)
+                                            lan.add_parent(switch)
+                                            addedLANToSwitchRelationShip = True
+                                            logger.info(f'Added LAN {lanItem} to Switch {switchID} relationship on host {hostName}')
+                                            lanToSwitchRelationsAdded += 1
+                                            break
+                                    if not addedLANToSwitchRelationShip:
+                                        logger.info(f'LAN {lanItem} to Switch {ensSwitchIDList} relationship was not created on host {hostName}')
+
                                     lanObjectList.append(lan)
                         else:
                             logger.error(f'List of Lans is empty in the parsed lan output: {parsed_lan_output}') 

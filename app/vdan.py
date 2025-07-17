@@ -51,6 +51,7 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
     commands = []
     results = []
     hostName = host.get_key().name
+    vdanToSwitchRelationsAdded = 0
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'vDAN objects collection on {host.get_key().name} '):
@@ -129,6 +130,7 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                 if "lanB" in vdan and "supTxPkts" in vdan["lanB"] and vdan["lanB"]["supTxPkts"] is not None and vdan["lanB"]["supTxPkts"] != '':
                                     vdanObj.with_metric("lanB_supTxPkts", vdan["lanB"]["supTxPkts"])
 
+                                addedVDANToSwitchRelationShip = False
                                 for switch in switches:
                                     switchID = switch.get_property_values("switch_id")[0]
                                     switchName = switch.get_key().name
@@ -136,7 +138,12 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                         vdanObj.with_property("switch_id",switchID)
                                         vdanObj.with_property("switch_name",switchName)
                                         vdanObj.add_parent(switch)
-                                        break                  
+                                        logger.info(f"Added VDAN {vdan['vdanIndex']} to Switch {switchID} relationship on host {hostName}")
+                                        addedVDANToSwitchRelationShip = True
+                                        vdanToSwitchRelationsAdded += 1
+                                        break
+                                if not addedVDANToSwitchRelationShip:
+                                    logger.info(f"VDAN {vdan['vdanIndex']} to Switch {ensSwitchIDList} relationship was not created on host {hostName}")                  
                                 vdanObjects.append(vdanObj)
                             else:
                                 logger.error(f'VDAN Index does not exist in parsed VDAN list command output: {vdanResults}') 
@@ -148,6 +155,7 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
         else:
             logger.info(f'Found zero DvSPortSets')
     logger.info(f'Collected {len(vdanObjects)} VDAN objects from host {hostName}')
+    logger.info(f'Added switch relationships to {vdanToSwitchRelationsAdded} VDANs on host {hostName}')    
     return vdanObjects
 
 def parse_vdan_output(text):

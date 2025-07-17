@@ -33,11 +33,12 @@ class Switch(Object):
         )
 
 
-def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmdOutput: str) -> List[Switch]:
+def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmdOutput: str, masterSwitchList: List) -> List[Switch]:
 
     switches = []
     vSwitchInstances = []
     hostName = host.get_key().name
+    hostToSwitchRelationsAdded = 0
 
     with Timer(logger, f'Switch objects collection on host {hostName}'):
         try:
@@ -82,16 +83,6 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
                     else:
                         logger.info(f'Max ports not found in the ENS switch list command output on host {hostName}')
                         break
-                    if "numActivePorts" in ensSwitch and ensSwitch['numActivePorts'] is not None and ensSwitch['numActivePorts'] != '':
-                        numActivePorts = ensSwitch['numActivePorts']
-                    else:
-                        logger.info(f'Number of active ports not found in the ENS switch list command output on host {hostName}')
-                        break
-                    if "numPorts" in ensSwitch and ensSwitch['numPorts'] is not None and ensSwitch['numPorts'] != '':
-                        numPorts = ensSwitch['numPorts']
-                    else:
-                        logger.info(f'Number of ports not found in the ENS switch list command output on host {hostName}')
-                        break
                     if "mtu" in ensSwitch and ensSwitch['mtu'] is not None and ensSwitch['mtu'] != '':
                         mtu = ensSwitch['mtu']
                     else:
@@ -120,27 +111,45 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
                     if switchUUID is None or not switchUUID:
                         logger.info(f'Switch UUID is either Null or Empty on host {hostName}')
                         break
-                    uuid = str(swID) + "_" + switchUUID + "_" + hostName
-                    switch = Switch(name=friendlyName, uuid=uuid, host=hostName)
-                    switch.with_property("switch_id", swID)
-                    switch.with_property("esxi_host", hostName)
-                    switch.with_property("internal_name", ensSwitchName)
-                    switch.with_property("switch_uuid", switchUUID)
-                    switch.with_property("max_ports", maxPorts)
-                    switch.with_property("num_active_ports", numActivePorts)
-                    switch.with_property("num_ports", numPorts)
-                    switch.with_property("MTU", mtu)
-                    switch.with_property("num_lcores", numLcores)
-                    switch.with_property("lcore_ids", lcoreIDs)
+                    
+                    foundMasterSwitch = False
+                    if masterSwitchList is not None and masterSwitchList and len(masterSwitchList) > 0:
+                        for masterSwitch in masterSwitchList:
+                            if masterSwitch.get_property_values("switch_uuid")[0] == switchUUID:
+                                host.add_parent(masterSwitch)
+                                logger.info(f'Added host {hostName} to switch {swID} relationship')
+                                hostToSwitchRelationsAdded += 1
+                                foundMasterSwitch = True
+                                break
+                    else:
+                        logger.info(f'No switches in the collection yet.')
+                        foundMasterSwitch = False
+                    if not foundMasterSwitch:
+                        uuid = str(swID) + "_" + switchUUID + "_" + hostName
+                        switch = Switch(name=friendlyName, uuid=uuid, host=hostName)
+                        switch.with_property("switch_id", swID)
+                        switch.with_property("esxi_host", hostName)
+                        switch.with_property("internal_name", ensSwitchName)
+                        switch.with_property("switch_uuid", switchUUID)
+                        switch.with_property("max_ports", maxPorts)
+                        switch.with_property("MTU", mtu)
+                        switch.with_property("num_lcores", numLcores)
+                        switch.with_property("lcore_ids", lcoreIDs)
 
-                    switch.add_parent(host)
-                    switches.append(switch)
+                        host.add_parent(switch)
+                        hostToSwitchRelationsAdded += 1
+                        logger.info(f'Added host {hostName} to switch {swID} relationship')
+                        switches.append(switch)
+                        logger.info(f'Added one switch to the collection.')
+                    else:
+                        logger.info(f'Switch is not different from the ones collected already')
                 except Exception as e:
                     logger.error(f'Exception occured while parsing ENS Switch List {parsedENSSwitchList}. Exception Type: {type(e).__name__}')
                     logger.exception(f'Exception Message: {e}')
         else:
             logger.info(f'No ENS switches are configured on host {hostName}')
-    logger.info(f'Collected {len(switches)} switches from host {hostName}') 
+    logger.info(f'There are {len(masterSwitchList)} switches that are already connected to the host {hostName}. Collected {len(switches)} additional switches from host {hostName}. ')
+    logger.info(f'Added Host relationships to {hostToSwitchRelationsAdded} switches')  
     return switches
 
 
@@ -188,7 +197,7 @@ def parseDVSPortSetLine(line):
         entry = {
             'vSwitchName': match.group(1),
             'friendlyName': match.group(2),
-            'switchUUID': match.group(3)
+            'switchUUID': match.group(3).strip()
         }
         return entry
     else:
