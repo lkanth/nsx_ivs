@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class Lan(Object):
 
-    def __init__(self, name: str, uuid: str, host: str, switchID: str):
+    def __init__(self, name: str, uuid: str, switchID: str):
         """Initializes a Tenant object that represent the ResourceKind defined in line 15 of the describe.xml file.
 
         :param name: The  unique name of used to display the tenant
@@ -32,7 +32,6 @@ class Lan(Object):
         """
         self.uuid = uuid
         self.name = name
-        self.host = host
         super().__init__(
             key=Key(
                 name=name,
@@ -40,12 +39,12 @@ class Lan(Object):
                 adapter_kind=constants.ADAPTER_KIND,
                 # object_kind should match the key used for the ResourceKind in line 15 of the describe.xml
                 object_kind="lan",
-                identifiers=[Identifier(key="uuid", value=uuid), Identifier(key="host", value=host), Identifier(key="switchID", value=switchID)],
+                identifiers=[Identifier(key="uuid", value=uuid), Identifier(key="switchID", value=switchID)],
             )
         )
 
 
-def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, switches: List):
+def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, masterSwitchList: List, masterLANList: List, masterHostToSwitchDict: dict):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -63,6 +62,7 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
         if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
             for ensSwitchID in ensSwitchIDList:
                 commands.append("nsxcli -c get ens prp config " + str(ensSwitchID))
+        hostSwitchList = masterHostToSwitchDict[hostName]
         numOfCommands = len(commands)
         if numOfCommands > 0:
             for command in commands:
@@ -89,7 +89,6 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                 else:
                     logger.info(f'Command "{command}" output is ({output})')
 
-            
             if len(results) == len(commands):
                 for i in range(len(results)):
                     try:                   
@@ -105,10 +104,45 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                                 logger.info(f"switch ID not found in the LAN list (get ens prp config) command output on host {hostName}")
                                 continue
                             switchIDStr = str(switchID)
+                            hostSwitchUUID = None
+                            foundHostSwitchUUID = False
+                            for hostSwitch in hostSwitchList:
+                                if hostSwitch['switchID'] == switchID:
+                                    hostSwitchUUID = hostSwitch['switchUUID']
+                                    foundHostSwitchUUID = True
+                                    break
+                            if not foundHostSwitchUUID:
+                                logger.info(f'LAN switch UUID not found for siwitch ID {switchID}')
+                                continue
+                            
+                            foundMasterSwitchUUID = False
+                            matchedMasterSwitchObject = None
+                            for masterSwitch in masterSwitchList:
+                                masterSwitchUUID = masterSwitch.get_property_values("switch_uuid")[0]
+                                if hostSwitchUUID == masterSwitchUUID:
+                                    masterSwitchName = masterSwitch.get_key().name
+                                    foundMasterSwitchUUID = True
+                                    matchedMasterSwitchObject = masterSwitch
+                                    logger.info(f'LAN switch ID is {switchID} and the switch unique ID is {masterSwitchUUID}')
+                                    break
+                            if not foundMasterSwitchUUID:
+                                logger.info(f'LAN switch UUID not found for siwitch ID {switchID}')
+                                continue
+                            switchIDStr = str(switchID) + "_" + masterSwitchName
                             for lanItem in lanList:
-                                if "status" in parsed_lan_output[lanItem]:                                
-                                    uuid = lanItem + "_" + hostName + "_switch_" + switchIDStr
-                                    lan = Lan(name=lanItem, uuid=uuid, host=hostName, switchID=switchIDStr)                               
+                                if "status" in parsed_lan_output[lanItem]:
+                                    uuid = lanItem  + "_switch_" + masterSwitchUUID
+                                    lanObjAlreadyExists = False
+                                    for masterLanObj in masterLANList:
+                                        masterLanObjUUID = masterLanObj.get_identifier_value("uuid")
+                                        if masterLanObjUUID == uuid:
+                                            lanObjAlreadyExists = True
+                                            break
+                                    if lanObjAlreadyExists:
+                                        logger.info(f'LAN object {lanItem} already exists')
+                                        continue
+
+                                    lan = Lan(name=lanItem, uuid=uuid, switchID=switchIDStr)                               
                                     lan.with_property("esxi_host", hostName)
                                     lan.with_property("switch_id", switchID)
                                     if "status" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['status'] is not None and parsed_lan_output[lanItem]['status']:
@@ -127,22 +161,11 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                                         lan.with_property("policy", value=parsed_lan_output[lanItem]["policy"])
                                     else:
                                         logger.info(f'policy is either null or empty. LAN metric policy value was not collected.')
-                                    
-                                    addedLANToSwitchRelationShip = False
-                                    for switch in switches:
-                                        switchID = switch.get_property_values("switch_id")[0]
-                                        switchName = switch.get_key().name
-                                        if switchID == ensSwitchIDList[i]:
-                                            lan.with_property("switch_id",switchID)
-                                            lan.with_property("switch_name",switchName)
-                                            lan.add_parent(switch)
-                                            addedLANToSwitchRelationShip = True
-                                            logger.info(f'Added LAN {lanItem} to Switch {switchID} relationship on host {hostName}')
-                                            lanToSwitchRelationsAdded += 1
-                                            break
-                                    if not addedLANToSwitchRelationShip:
-                                        logger.info(f'LAN {lanItem} to Switch {ensSwitchIDList} relationship was not created on host {hostName}')
-
+                                     
+                                    lan.with_property("switch_name",masterSwitchName)
+                                    lan.add_parent(matchedMasterSwitchObject)                                            
+                                    logger.info(f'Added LAN {lanItem} to Switch {switchID} relationship on host {hostName}')
+                                    lanToSwitchRelationsAdded += 1
                                     lanObjectList.append(lan)
                         else:
                             logger.error(f'List of Lans is empty in the parsed lan output: {parsed_lan_output}') 

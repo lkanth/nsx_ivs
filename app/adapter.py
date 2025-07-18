@@ -95,8 +95,7 @@ def get_adapter_definition() -> AdapterDefinition:
         )
 
         switch = definition.define_object_type("switch", "NSX IvS Switch")
-        switch.define_string_identifier("uuid", "UUID")        
-        switch.define_string_identifier("host", "ESXi Server")
+        switch.define_string_identifier("uuid", "UUID")
         switch.define_numeric_property("switch_id", "Switch ID")
         switch.define_string_property("internal_name", "Internal Name")
         switch.define_string_property("esxi_host", "ESXi Host")
@@ -138,8 +137,7 @@ def get_adapter_definition() -> AdapterDefinition:
         node.define_metric("node_age", "Node Age")
 
         lan = definition.define_object_type("lan", "NSX IvS LAN")
-        lan.define_string_identifier("uuid", "UUID")        
-        lan.define_string_identifier("host", "ESXi Server")
+        lan.define_string_identifier("uuid", "UUID")
         lan.define_string_identifier("switchID", "Switch ID")
         lan.define_string_property("uplink1", "Uplink 1")
         lan.define_string_property("uplink2", "Uplink 2")
@@ -271,6 +269,8 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
             vlans = get_vlans(client,adapter_instance_id)
             RelAddedToVMObjects = []
             masterSwitchList = []
+            masterLANList = []
+            masterHostToSwitchDict = {}
             hostCount = 0
             for host in hosts:
                 try:
@@ -379,9 +379,15 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
                             continue
                         
-                        switches = get_switches(host, parsedENSSwitchList, vSwitchInstanceListCmdOutput, masterSwitchList)
+                        switches, hostToSwitchDict = get_switches(host, parsedENSSwitchList, vSwitchInstanceListCmdOutput, masterSwitchList, masterHostToSwitchDict)
                         for switchObj in switches:
                             masterSwitchList.append(switchObj)
+                        if not masterHostToSwitchDict or len(masterHostToSwitchDict) == 0:
+                            masterHostToSwitchDict = hostToSwitchDict
+                        else:
+                            for key, value in hostToSwitchDict.items():
+                                masterHostToSwitchDict[key] = value
+                        
                         vmsByName = get_vms(client, adapter_instance_id, content, host.get_key().name)
                         ports = get_ports(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterSwitchList)                 
                         vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlans, ports, vmsByName, client)
@@ -395,7 +401,9 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             if vlan:
                                 vdan.add_parent(vlan)                                
 
-                        lans = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterSwitchList)
+                        lans = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterSwitchList, masterLANList, masterHostToSwitchDict)
+                        for lanObj in lans:
+                            masterLANList.append(lanObj)
                         if len(vmObjectList) > 0:
                             for vmObject in vmObjectList:
                                 RelAddedToVMObjects.append(vmObject)
@@ -404,8 +412,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                                 if vDANVMObject not in RelAddedToVMObjects:
                                     RelAddedToVMObjects.append(vmObject)                                         
                         
-                        result.add_objects(vdans)                      
-                        result.add_objects(lans)
+                        result.add_objects(vdans)
                         result.add_objects(ports)
                         sshClient.close()
                         logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
@@ -417,6 +424,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         sshClient.close()
             try:
                 result.add_objects(masterSwitchList)
+                result.add_objects(masterLANList)
                 result.add_objects(hosts)                                  
                 for vm in RelAddedToVMObjects:                                        
                     result.add_object(vm)

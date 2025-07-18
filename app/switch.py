@@ -17,10 +17,9 @@ logger = logging.getLogger(__name__)
 
 class Switch(Object):
 
-    def __init__(self, name: str, uuid: str, host: str):
+    def __init__(self, name: str, uuid: str):
         self.uuid = uuid
         self.name = name
-        self.host = host
         super().__init__(
             key=Key(
                 name=name,
@@ -28,17 +27,19 @@ class Switch(Object):
                 adapter_kind=constants.ADAPTER_KIND,
                 # object_kind should match the key used for the ResourceKind in line 15 of the describe.xml
                 object_kind="switch",
-                identifiers=[Identifier(key="uuid", value=uuid), Identifier(key="host", value=host)],
+                identifiers=[Identifier(key="uuid", value=uuid)],
             )
         )
 
 
-def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmdOutput: str, masterSwitchList: List) -> List[Switch]:
+def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmdOutput: str, masterSwitchList: List, masterHostToSwitchDict: dict):
 
     switches = []
     vSwitchInstances = []
     hostName = host.get_key().name
     hostToSwitchRelationsAdded = 0
+    hostToSwitchDict = {}
+    hostToSwitchList = []
 
     with Timer(logger, f'Switch objects collection on host {hostName}'):
         try:
@@ -49,21 +50,21 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
                         DVSPortRowDict = parseDVSPortSetLine(dvsPortSetLine)
                         if "vSwitchName" not in DVSPortRowDict or DVSPortRowDict['vSwitchName'] is None or not DVSPortRowDict['vSwitchName']:
                             logger.info(f'Switch name in parsed DVsPortRow of vSwitch instance list command output is empty on host {hostName}. ')
-                            return switches
+                            return switches, hostToSwitchDict
                         if "friendlyName" not in DVSPortRowDict or DVSPortRowDict['friendlyName'] is None or not DVSPortRowDict['friendlyName']:
                             logger.info(f'Switch label in parsed DVsPortRow of vSwitch instance list command output is empty on host {hostName}. ')
-                            return switches
+                            return switches, hostToSwitchDict
                         if "switchUUID" not in DVSPortRowDict or DVSPortRowDict['switchUUID'] is None or not DVSPortRowDict['switchUUID']:
                             logger.info(f'Switch UUID in parsed DVsPortRow of vSwitch instance list command output is empty on host {hostName}. ')
-                            return switches
+                            return switches, hostToSwitchDict
                         vSwitchInstances.append(DVSPortRowDict)
             else:
                 logger.info(f'vswitch instance list command output is empty. No switches are configured on host {hostName}. ')
-                return switches
+                return switches, hostToSwitchDict
         except Exception as e:
             logger.error(f'Exception occured while parsing DVS Port Set Lines in vSwitch Instance List command output. Exception Type: {type(e).__name__}')
             logger.exception(f'Exception Message: {e}')
-            return switches
+            return switches, hostToSwitchDict
         if parsedENSSwitchList is not None and parsedENSSwitchList and len(parsedENSSwitchList) > 0:
             logger.info(f'parsedENSSwitchList {parsedENSSwitchList}')
             for ensSwitch in parsedENSSwitchList:
@@ -110,11 +111,18 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
                     if switchUUID is None or not switchUUID:
                         logger.info(f'Switch UUID is either Null or Empty on host {hostName}')
                         continue
-                    
+
+                    switchEntryDict ={}
+                    switchEntryDict['switchUUID'] = switchUUID
+                    switchEntryDict['switchID'] = swID
+                    switchEntryDict['vSwitchName'] = ensSwitchName
+                    switchEntryDict['friendlyName'] = friendlyName
+                    hostToSwitchList.append(switchEntryDict)
+
                     foundMasterSwitch = False
                     if masterSwitchList is not None and masterSwitchList and len(masterSwitchList) > 0:
                         for masterSwitch in masterSwitchList:
-                            if masterSwitch.get_property_values("switch_uuid")[0] == switchUUID:
+                            if masterSwitch.get_property_values("switch_uuid")[0] is not None and masterSwitch.get_property_values("switch_uuid")[0] and masterSwitch.get_property_values("switch_uuid")[0] == switchUUID:
                                 host.add_parent(masterSwitch)
                                 logger.info(f'Added host {hostName} to switch {swID} relationship')
                                 hostToSwitchRelationsAdded += 1
@@ -124,8 +132,8 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
                         logger.info(f'No switches in the collection yet.')
                         foundMasterSwitch = False
                     if not foundMasterSwitch:
-                        uuid = str(swID) + "_" + switchUUID + "_" + hostName
-                        switch = Switch(name=friendlyName, uuid=uuid, host=hostName)
+                        uuid = str(swID) + "_" + switchUUID
+                        switch = Switch(name=friendlyName, uuid=uuid)
                         switch.with_property("switch_id", swID)
                         switch.with_property("esxi_host", hostName)
                         switch.with_property("internal_name", ensSwitchName)
@@ -147,9 +155,10 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
                     logger.exception(f'Exception Message: {e}')
         else:
             logger.info(f'No ENS switches are configured on host {hostName}')
+    hostToSwitchDict[hostName] = hostToSwitchList
     logger.info(f'There are {len(masterSwitchList)} switches that are already connected to the host {hostName}. Collected {len(switches)} additional switches from host {hostName}. ')
     logger.info(f'Added Host relationships to {hostToSwitchRelationsAdded} switches')  
-    return switches
+    return switches, hostToSwitchDict
 
 
 

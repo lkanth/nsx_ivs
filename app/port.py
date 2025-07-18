@@ -158,6 +158,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                                 break
                                         if not addedPortToSwitchRelationShip:
                                             logger.info(f'port {portIDFromCmdOutput} to Switch {ensSwitchIDList} relationship was not created on host {hostName}')
+                                        port.add_parent(host)
                                         ports.append(port)
                                     else:
                                         logger.error(f'Found no metric information for the port: {port_result} on host {hostName}')
@@ -173,7 +174,8 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
         else:
             logger.info(f'"nsxdp-cli vswitch instance list command output is empty: "{vSwitchInstanceListCmdOutput}')
     logger.info(f'Collected {len(ports)} ports from host {hostName}')
-    logger.info(f'Added switch relationships to {portToSwitchRelationsAdded} ports on host {hostName}')             
+    logger.info(f'Added switch relationships to {portToSwitchRelationsAdded} ports on host {hostName}')
+    logger.info(f'Added host relationships to {len(ports)} Ports on host {hostName}')             
     return ports
 
 def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {}, ports: List[Port], vmsByName: {}, suiteAPIClient) -> List:
