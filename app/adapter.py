@@ -350,7 +350,8 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             nodes = get_nodes(sshClient, host)
                             logger.info(f'Starting Node to VLAN relationship creation on host {hostName}') 
                             for node in nodes:
-                                vlanID = node.get_property('vlan_id')[0].value
+                                vlanID = str(node.get_property('vlan_id')[0].value)
+                                logger.info(f"Node {node.get_key().name}'s VLAN ID is {vlanID}")
                                 vlan = vlans.get(vlanID)
                                 if vlan:
                                     node.add_parent(vlan)
@@ -447,7 +448,8 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             
                             logger.info(f'Starting VDAN to VLAN relationship on host {hostName}') 
                             for vdan in vdans:
-                                vlanID = vdan.get_property('vlan_id')[0].value
+                                vlanID = str(vdan.get_property('vlan_id')[0].value)
+                                logger.info(f"VDAN {vdan.get_key().name}'s VLAN ID is {vlanID}")  
                                 vlan = vlans.get(vlanID)
                                 if vlan:
                                     vdan.add_parent(vlan)
