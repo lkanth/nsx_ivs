@@ -32,7 +32,7 @@ class Switch(Object):
         )
 
 
-def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmdOutput: str, masterSwitchList: List, masterHostToSwitchDict: dict):
+def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmdOutput: str, masterSwitchList: List):
 
     switches = []
     vSwitchInstances = []
@@ -118,11 +118,12 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
                     switchEntryDict['vSwitchName'] = ensSwitchName
                     switchEntryDict['friendlyName'] = friendlyName
                     hostToSwitchList.append(switchEntryDict)
-
+                    
+                    
                     foundMasterSwitch = False
-                    if masterSwitchList is not None and masterSwitchList and len(masterSwitchList) > 0:
+                    if masterSwitchList and len(masterSwitchList) > 0:
                         for masterSwitch in masterSwitchList:
-                            if masterSwitch.get_property_values("switch_uuid")[0] is not None and masterSwitch.get_property_values("switch_uuid")[0] and masterSwitch.get_property_values("switch_uuid")[0] == switchUUID:
+                            if masterSwitch.get_property_values("switch_uuid")[0] and masterSwitch.get_property_values("switch_uuid")[0] == switchUUID:
                                 host.add_parent(masterSwitch)
                                 logger.info(f'Added host {hostName} to switch {swID} relationship')
                                 hostToSwitchRelationsAdded += 1

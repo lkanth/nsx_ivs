@@ -13,7 +13,7 @@ from pyVmomi import vim
 
 logger = logging.getLogger(__name__)
 
-def get_vms(suite_api_client: SuiteApiClient, adapter_instance_id: str, content: Any, hostname: str) -> Any:
+def get_vms(suite_api_client: SuiteApiClient, adapter_instance_id: str, hostname: str) -> Any:
     vmsByName = {}
     
     try:

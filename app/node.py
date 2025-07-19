@@ -61,46 +61,53 @@ def get_nodes(ssh: SSHClient, host: Object):
                 logger.info(f'Successfully ran the command "{command}" on host {hostName}')
             else:
                 logger.error(f'Command failed with exit status {exit_status}. Error: {error}')
+                return nodes
         except paramiko.AuthenticationException as e:
             logger.error(f'Authentication failed, please verify your credentials. Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
             logger.exception(f'Exception Message: {e}')
+            return nodes
         except paramiko.SSHException as e:
             logger.error(f'SSH error occurred. Exception Type: {type(e).__name__}')
             logger.exception(f'Exception Message: {e}')
+            return nodes
         except Exception as e:
             logger.error(f'Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
             logger.exception(f'Exception Message: {e}')
+            return nodes
         else:
             logger.info(f'Node collection command output "{result}"')
 
         try:
             logger.info(f'Parsing node collection result')
-            node_results = re.split("\n", result)
-            i = 2
+            if result:
+                node_results = re.split("\n", result)
+                i = 2
+                while i < len(node_results):
+                    columns = re.split("\s+", node_results[i])
+                    if columns[0].isnumeric():
+                        uuid = str(columns[0]) + "_" + hostName
+                        mac = columns[1]
+                        lnode = Node(
+                            name= str(columns[0]),
+                            uuid=uuid,
+                            host=hostName
+                        )
 
-            while i < len(node_results):
-                columns = re.split("\s+", node_results[i])
-                if columns[0].isnumeric():
-                    uuid = columns[0]
-                    mac = columns[1]
-                    lnode = Node(
-                        name="Node: " + uuid,
-                        uuid=uuid,
-                        host=host.get_key().name
-                    )
-
-                    lnode.with_property("mac", mac)
-                    lnode.with_property("vlan_id", columns[2])
-    
-                    lnode.with_property("type", columns[3])
-                    lnode.add_metric(
-                        Metric(key="node_age", value=columns[4])
-                    )
-                    lnode.add_parent(host)
-                    nodes.append(lnode)
-                    i+=1
-                else:
-                    i += 1
+                        lnode.with_property("mac", mac)
+                        lnode.with_property("vlan_id", columns[2])
+                        lnode.with_property("esxi_host", hostName)
+        
+                        lnode.with_property("type", columns[3])
+                        lnode.add_metric(Metric(key="node_age", value=columns[4])                    )
+                        lnode.add_parent(host)
+                        logger.info(f'Added Node {str(columns[0])} to Host {hostName} relationship')
+                        nodes.append(lnode)
+                        i+=1
+                    else:
+                        i += 1
+            else:
+                logger.error(f'Node list command output is empty or NULL')
+                return nodes
         except Exception as e:
             logger.error(f'Exception occured while parsing command output "{result}". Exception Type: {type(e).__name__}')
             logger.exception(f'Exception Message: {e}')

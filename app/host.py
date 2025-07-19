@@ -13,7 +13,6 @@ from pyVmomi import vim
 
 logger = logging.getLogger(__name__)
 
-
 def get_hosts(suite_api_client: SuiteApiClient, adapter_instance_id: str, content: Any,) -> Any:
     container = content.rootFolder  # starting point to look into
     view_type = [vim.HostSystem]  # object types to look for
@@ -57,6 +56,9 @@ def get_host_property(suite_api_client: SuiteApiClient, host: Object, property: 
         host_response = suite_api_client.get(f'/api/resources?name={host.get_key().name}&resourceKind=HostSystem&_no_links=true')
         host_id = json.loads(host_response.content)["resourceList"][0]["identifier"]
         logger.info(f'Response from VCF Operations REST API call - Host resource identifier is: {host_id}')
+        if not host_id:
+            logger.info(f'Host resource identifier cannot be empty or NULL')
+            return None
 
         logger.info(f'Making VCF Operations REST API call to retrieve Host properties')
         response = suite_api_client.get(f'/api/resources/{host_id}/properties?_no_links=true')

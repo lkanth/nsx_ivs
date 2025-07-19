@@ -40,7 +40,7 @@ class vDAN(Object):
             )
         )
 
-def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, switches: List):
+def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, masterHostToSwitchDict: dict):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -51,14 +51,14 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
     commands = []
     results = []
     hostName = host.get_key().name
-    vdanToSwitchRelationsAdded = 0
     vdanToHostRelationsAdded = 0
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'vDAN objects collection on {host.get_key().name} '):
-        if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
+        if vSwitchInstanceListCmdOutput:
             for ensSwitchID in ensSwitchIDList:
                 commands.append("nsxdp-cli ens prp stats vdan list -s " + str(ensSwitchID))
+        hostSwitchList = masterHostToSwitchDict[hostName]
         numOfCommands = len(commands)
         if numOfCommands > 0:
             for command in commands:
@@ -87,6 +87,16 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
 
             if len(results) == len(commands):
                 for i in range(len(ensSwitchIDList)):
+                    hostSwitchName = None
+                    foundHostSwitchName = False
+                    for hostSwitch in hostSwitchList:
+                        if hostSwitch['switchID'] == ensSwitchIDList[i]:
+                            hostSwitchName = hostSwitch['friendlyName']
+                            foundHostSwitchName = True
+                            break
+                    if not foundHostSwitchName:
+                        logger.info(f'Port switch friendly name not found for switch ID {str(ensSwitchIDList[i])}. Will use UNKNOWN')
+                        hostSwitchName = "UNKNOWN"
                     try:
                         vdanResults = parse_vdan_output(results[i])
                         for vdan in vdanResults:
@@ -100,7 +110,7 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                 vdanObj.with_property("esxi_host",hostName)
                                 if "vdanIndex" in vdan:
                                     vdanObj.with_property("vdan_id",vdan["vdanIndex"])
-                                if "mac" in vdan and vdan['mac'] is not None and vdan['mac']:
+                                if "mac" in vdan and vdan['mac']:
                                     vdanObj.with_property("mac", vdan["mac"])
                                 if "vlanID" in vdan and vdan['vlanID'] is not None and vdan['vlanID'] != '':
                                     vdanObj.with_property("vlan_id", vdan["vlanID"])
@@ -131,21 +141,10 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                 if "lanB" in vdan and "supTxPkts" in vdan["lanB"] and vdan["lanB"]["supTxPkts"] is not None and vdan["lanB"]["supTxPkts"] != '':
                                     vdanObj.with_metric("lanB_supTxPkts", vdan["lanB"]["supTxPkts"])
 
-                                addedVDANToSwitchRelationShip = False
-                                for switch in switches:
-                                    switchID = switch.get_property_values("switch_id")[0]
-                                    switchName = switch.get_key().name
-                                    if switchID == ensSwitchIDList[i]:
-                                        vdanObj.with_property("switch_id",switchID)
-                                        vdanObj.with_property("switch_name",switchName)
-                                        vdanObj.add_parent(switch)
-                                        logger.info(f"Added VDAN {vdan['vdanIndex']} to Switch {switchID} relationship on host {hostName}")
-                                        addedVDANToSwitchRelationShip = True
-                                        vdanToSwitchRelationsAdded += 1
-                                        break
-                                if not addedVDANToSwitchRelationShip:
-                                    logger.info(f"VDAN {vdan['vdanIndex']} to Switch {ensSwitchIDList} relationship was not created on host {hostName}")
+                                vdanObj.with_property("switch_id",ensSwitchIDList[i])
+                                vdanObj.with_property("switch_name",hostSwitchName)
                                 vdanObj.add_parent(host)
+                                logger.info(f'Added VDAN {str(vdan["vdanIndex"])} to Host {hostName} relationship on host {hostName}')
                                 vdanToHostRelationsAdded += 1                  
                                 vdanObjects.append(vdanObj)
                             else:
@@ -158,7 +157,6 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
         else:
             logger.info(f'Found zero DvSPortSets')
     logger.info(f'Collected {len(vdanObjects)} VDAN objects from host {hostName}')
-    logger.info(f'Added switch relationships to {vdanToSwitchRelationsAdded} VDANs on host {hostName}')
     logger.info(f'Added host relationships to {vdanToHostRelationsAdded} VDANs on host {hostName}')    
     return vdanObjects
 
@@ -228,7 +226,7 @@ def add_vdan_vm_relationship(vdans: List, vmMacNameDict:dict, vmsByName: dict, s
                 if vmMacAddress in vmMacNameDict:
                     vmName = vmMacNameDict[vmMacAddress]
                     vms = vmsByName.get(vmName)
-                    if vms is None or not vms:
+                    if not vms:
                         logger.info(f'VM {vmName} does not exist for relationship creation)')
                     else:
                         vdanObj.with_property("vm", vmName)                       

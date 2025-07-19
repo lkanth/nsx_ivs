@@ -42,7 +42,7 @@ class Port(Object):
         )
 
 
-def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, switches: List):
+def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, masterHostToSwitchDict: dict):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -53,15 +53,16 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
     commands = []
     results = []
     hostName = host.get_key().name
-    portToSwitchRelationsAdded = 0
+    portToHostRelationsAdded = 0
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'Port objects collection on host {hostName}'):
-        if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
+        if vSwitchInstanceListCmdOutput:
             for ensSwitchID in ensSwitchIDList:
                 commands.append("nsxdp-cli ens latency system dump -s " + str(ensSwitchID))
             for ensSwitchID in ensSwitchIDList:    
                 commands.append("nsxdp-cli ens latency system clear -s " + str(ensSwitchID))
+            hostSwitchList = masterHostToSwitchDict[hostName]
             numOfCommands = len(commands)
             if numOfCommands > 0:
                 for command in commands:
@@ -90,8 +91,18 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
 
                 if len(results) == len(commands): 
                     for i in range(len(ensSwitchIDList)):
+                        hostSwitchName = None
+                        foundHostSwitchName = False
+                        for hostSwitch in hostSwitchList:
+                            if hostSwitch['switchID'] == ensSwitchIDList[i]:
+                                hostSwitchName = hostSwitch['friendlyName']
+                                foundHostSwitchName = True
+                                break
+                        if not foundHostSwitchName:
+                            logger.info(f'Port switch friendly name not found for switch ID {str(ensSwitchIDList[i])}. Will use UNKNOWN')
+                            hostSwitchName = "UNKNOWN"
                         port_results = re.split("PortID:\s+", results[i])[1:]
-                        if port_results is not None and port_results and len(port_results) > 0:
+                        if port_results and len(port_results) > 0:
                             for port_result in port_results:
                                 try:
                                     lines = re.split("\n", port_result)
@@ -143,22 +154,13 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                         else:
                                             logger.info(f'rx_mean is either null or empty. Port metric rx_mean value was not collected.')
 
-                                        addedPortToSwitchRelationShip = False
-                                        for switch in switches:
-                                            switchID = switch.get_property_values("switch_id")[0]
-                                            switchName = switch.get_key().name
-                                            logger.info(f'Switch ID {switchID}, Switch name: {switchName}, ensSwitch output switch ID: {ensSwitchIDList[i]} ')
-                                            if switchID == ensSwitchIDList[i]:
-                                                port.with_property("switch_id",switchID)
-                                                port.with_property("switch_name",switchName)
-                                                port.add_parent(switch)
-                                                addedPortToSwitchRelationShip = True
-                                                logger.info(f'Added port {portIDFromCmdOutput} to Switch {switchID} relationship on host {hostName}')
-                                                portToSwitchRelationsAdded += 1
-                                                break
-                                        if not addedPortToSwitchRelationShip:
-                                            logger.info(f'port {portIDFromCmdOutput} to Switch {ensSwitchIDList} relationship was not created on host {hostName}')
+                                        
+                                        port.with_property("switch_id",ensSwitchIDList[i])
+                                        port.with_property("switch_name",hostSwitchName)
+                                        
                                         port.add_parent(host)
+                                        portToHostRelationsAdded += 1
+                                        logger.info(f'Added port {portIDFromCmdOutput} to Host {hostName} relationship on host {hostName}')
                                         ports.append(port)
                                     else:
                                         logger.error(f'Found no metric information for the port: {port_result} on host {hostName}')
@@ -174,8 +176,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
         else:
             logger.info(f'"nsxdp-cli vswitch instance list command output is empty: "{vSwitchInstanceListCmdOutput}')
     logger.info(f'Collected {len(ports)} ports from host {hostName}')
-    logger.info(f'Added switch relationships to {portToSwitchRelationsAdded} ports on host {hostName}')
-    logger.info(f'Added host relationships to {len(ports)} Ports on host {hostName}')             
+    logger.info(f'Added host relationships to {portToHostRelationsAdded} Ports on host {hostName}')             
     return ports
 
 def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {}, ports: List[Port], vmsByName: {}, suiteAPIClient) -> List:
@@ -184,24 +185,24 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
     vmMacNameDict = {}
     portToVLANRelationsAdded = 0
     with Timer(logger, f'Port to vLAN, Port to VM relationship creation'):
-        if ports is not None and ports and len(ports) > 0:
+        if ports and len(ports) > 0:
             port_by_name = {}
             for port in ports:
                 port_by_name.update({port.get_key().name: port})
 
-            if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
+            if vSwitchInstanceListCmdOutput:
                 portset_results = re.split("DvsPortset", vSwitchInstanceListCmdOutput)
-                if portset_results is not None and portset_results and len(portset_results) > 0:
+                if portset_results and len(portset_results) > 0:
                     for port_result in portset_results:
                         try:
                             rows = re.split("\n", port_result)[3:]
                             numOfRows = len(rows)                            
                             for rowIndex in range(numOfRows):
                                 vSwitchInstanceLineDict =  parsevSwitchInstanceOutput(rows[rowIndex]) 
-                                if vSwitchInstanceLineDict is not None and vSwitchInstanceLineDict:
+                                if vSwitchInstanceLineDict:
                                     port = port_by_name.get(f"{vSwitchInstanceLineDict['portNumber'].strip()}")                        
                                     vlan = vlans_by_name.get(f"{vSwitchInstanceLineDict['vid'].strip()}")
-                                    if port is None or vlan is None:
+                                    if not port or not vlan:
                                         logger.info(f"Port ({vSwitchInstanceLineDict['portNumber']}:{port}) to VLAN ({vSwitchInstanceLineDict['vid']}:{vlan}) relationship was not created.")
                                     else:
                                         port.add_parent(vlan)
@@ -228,7 +229,7 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {},
                                         vmName = clientName[:lastIndex]
                                         vmMacNameDict[vmNICMacaddress] = vmName                                                  
                                         vms = vmsByName.get(vmName)
-                                        if port is None or vms is None or not vms or not port:
+                                        if not vms or not port:
                                             logger.info(f"Port ({vSwitchInstanceLineDict['portNumber']}:{port}) to VM({vmName}:{vms}) relationship was not created.")
                                         else:                       
                                             port.with_property("vm", vmName)

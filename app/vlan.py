@@ -47,6 +47,9 @@ def getDistPortGroupProperty(suite_api_client: SuiteApiClient, distPortGroup: Ob
         response = suite_api_client.get(f'/api/resources?name={distPortGroup.get_key().name}&resourceKind=DistributedVirtualPortgroup&_no_links=true')
         resource_id = json.loads(response.content)["resourceList"][0]["identifier"]
         logger.info(f'Response from VCF Operations REST API call - Distributed Port group resource identifier is: {resource_id}')
+        if not resource_id:
+            logger.info(f'VLAN resource identifier cannot be empty or NULL')
+            return None
         
         logger.info(f'Making VCF Operations REST API call to retrieve distributed port group properties')
         propResponse = suite_api_client.get(f'/api/resources/{resource_id}/properties?_no_links=true')

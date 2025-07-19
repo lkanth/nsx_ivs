@@ -32,6 +32,7 @@ class Lan(Object):
         """
         self.uuid = uuid
         self.name = name
+        self.switchID = switchID
         super().__init__(
             key=Key(
                 name=name,
@@ -55,11 +56,11 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
     lanObjectList = []
     commands = []
     results = []
-    lanToSwitchRelationsAdded = 0
+    lanToHostRelationsAdded = 0
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'LAN objects collection on {hostName}'):
-        if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
+        if vSwitchInstanceListCmdOutput:
             for ensSwitchID in ensSwitchIDList:
                 commands.append("nsxcli -c get ens prp config " + str(ensSwitchID))
         hostSwitchList = masterHostToSwitchDict[hostName]
@@ -112,7 +113,7 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                                     foundHostSwitchUUID = True
                                     break
                             if not foundHostSwitchUUID:
-                                logger.info(f'LAN switch UUID not found for siwitch ID {switchID}')
+                                logger.info(f'LAN switch UUID not found for switch ID {switchIDStr}')
                                 continue
                             
                             foundMasterSwitchUUID = False
@@ -123,12 +124,12 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                                     masterSwitchName = masterSwitch.get_key().name
                                     foundMasterSwitchUUID = True
                                     matchedMasterSwitchObject = masterSwitch
-                                    logger.info(f'LAN switch ID is {switchID} and the switch unique ID is {masterSwitchUUID}')
+                                    logger.info(f'LAN switch ID is {switchIDStr} and the switch unique ID is {masterSwitchUUID}')
                                     break
                             if not foundMasterSwitchUUID:
-                                logger.info(f'LAN switch UUID not found for siwitch ID {switchID}')
+                                logger.info(f'LAN switch UUID not found for switch ID {switchIDStr}')
                                 continue
-                            switchIDStr = str(switchID) + "_" + masterSwitchName
+                            switchIDNameStr = str(switchID) + "_" + masterSwitchName
                             for lanItem in lanList:
                                 if "status" in parsed_lan_output[lanItem]:
                                     uuid = lanItem  + "_switch_" + masterSwitchUUID
@@ -137,35 +138,39 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                                         masterLanObjUUID = masterLanObj.get_identifier_value("uuid")
                                         if masterLanObjUUID == uuid:
                                             lanObjAlreadyExists = True
+                                            host.add_parent(masterLanObj)
+                                            lanToHostRelationsAdded += 1
+                                            logger.info(f'Added LAN {lanItem} to Host {hostName} relationship')
                                             break
                                     if lanObjAlreadyExists:
                                         logger.info(f'LAN object {lanItem} already exists')
                                         continue
 
-                                    lan = Lan(name=lanItem, uuid=uuid, switchID=switchIDStr)                               
-                                    lan.with_property("esxi_host", hostName)
+                                    lan = Lan(name=lanItem, uuid=uuid, switchID=switchIDNameStr)                               
                                     lan.with_property("switch_id", switchID)
-                                    if "status" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['status'] is not None and parsed_lan_output[lanItem]['status']:
+                                    if "status" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['status']:
                                         lan.with_property("status", parsed_lan_output[lanItem]["status"])
                                     else:
                                         logger.info(f'status is either null or empty. LAN metric status value was not collected.')
-                                    if "uplink1" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['uplink1'] is not None and parsed_lan_output[lanItem]['uplink1']:
+                                    if "uplink1" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['uplink1']:
                                         lan.with_property("uplink1", value=parsed_lan_output[lanItem]["uplink1"])
                                     else:
                                         logger.info(f'uplink1 is either null or empty. LAN metric uplink1 value was not collected.')
-                                    if "uplink2" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['uplink2'] is not None and parsed_lan_output[lanItem]['uplink2']:
+                                    if "uplink2" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['uplink2']:
                                         lan.with_property("uplink2", value=parsed_lan_output[lanItem]["uplink2"])
                                     else:
                                         logger.info(f'uplink2 is either null or empty. LAN metric uplink2 value was not collected.')
-                                    if "policy" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['policy'] is not None and parsed_lan_output[lanItem]['policy']:
+                                    if "policy" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['policy']:
                                         lan.with_property("policy", value=parsed_lan_output[lanItem]["policy"])
                                     else:
                                         logger.info(f'policy is either null or empty. LAN metric policy value was not collected.')
                                      
                                     lan.with_property("switch_name",masterSwitchName)
-                                    lan.add_parent(matchedMasterSwitchObject)                                            
+                                    lan.add_parent(matchedMasterSwitchObject)
                                     logger.info(f'Added LAN {lanItem} to Switch {switchID} relationship on host {hostName}')
-                                    lanToSwitchRelationsAdded += 1
+                                    host.add_parent(lan)
+                                    logger.info(f'Added LAN {lanItem} to Host {hostName} relationship')
+                                    lanToHostRelationsAdded += 1
                                     lanObjectList.append(lan)
                         else:
                             logger.error(f'List of Lans is empty in the parsed lan output: {parsed_lan_output}') 
@@ -176,7 +181,8 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                 logger.error(f'Number of commands executed does not match with the number of outputs retrieved')
         else:
             logger.info(f'Found zero DvSPortSets')
-    logger.info(f'Collected {len(lanObjectList)} Lan objects from host {hostName}') 
+    logger.info(f'Collected {len(lanObjectList)} Lan objects from host {hostName}')
+    logger.info(f'Added host relationships to {lanToHostRelationsAdded} LANs') 
     return lanObjectList
 
 
