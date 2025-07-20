@@ -28,7 +28,7 @@ def get_vlans(suite_api_client: SuiteApiClient, adapter_instance_id: str) -> Any
         )
         logger.info(f'VCF Operations REST API call returned response with {len(distPortGroups)} distributed port group objects')
         for distPortGroup in distPortGroups:
-            vlanID = getDistPortGroupProperty(suite_api_client, distPortGroup, VCFOPS_VLANID_PROPERTY_KEY)
+            vlanID = get_distportgroup_property(suite_api_client, distPortGroup, VCFOPS_VLANID_PROPERTY_KEY)
             if vlanID is not None and vlanID != '' and vlanID.casefold() != 'none'.casefold():
                 vlansDict[vlanID] = distPortGroup
             else:
@@ -41,7 +41,7 @@ def get_vlans(suite_api_client: SuiteApiClient, adapter_instance_id: str) -> Any
     
     return vlansDict
     
-def getDistPortGroupProperty(suite_api_client: SuiteApiClient, distPortGroup: Object, property: str) -> str:
+def get_distportgroup_property(suite_api_client: SuiteApiClient, distPortGroup: Object, property: str) -> str:
     try:
         logger.info(f'Making VCF Operations REST API call to retrieve distributed port group resource identifier')
         response = suite_api_client.get(f'/api/resources?name={distPortGroup.get_key().name}&resourceKind=DistributedVirtualPortgroup&_no_links=true')

@@ -56,8 +56,9 @@ from node import get_nodes
 from lan import get_lans
 from vm import get_vms
 from vdan import add_vdan_vm_relationship
-from switch import parseENSSwitchList
+from switch import parse_ensswitch_list
 from switch import get_switches
+from switch import get_host_switches
 logger = logging.getLogger(__name__)
 
 
@@ -93,17 +94,6 @@ def get_adapter_definition() -> AdapterDefinition:
             advanced=True,
             default=1024,
         )
-
-        switch = definition.define_object_type("switch", "NSX IvS Switch")
-        switch.define_string_identifier("uuid", "UUID")
-        switch.define_numeric_property("switch_id", "Switch ID")
-        switch.define_string_property("internal_name", "Internal Name")
-        switch.define_string_property("esxi_host", "ESXi Host")
-        switch.define_string_property("lcore_ids", "LCore IDs")
-        switch.define_string_property("switch_uuid", "Switch UUID")
-        switch.define_numeric_property("max_ports", "Max Ports")
-        switch.define_numeric_property("MTU", "MTU")
-        switch.define_numeric_property("num_lcores", "Number of Lcores")
         
         vdan = definition.define_object_type("vdan", "NSX IvS vDAN")
         vdan.define_string_identifier("uuid", "UUID")
@@ -115,6 +105,7 @@ def get_adapter_definition() -> AdapterDefinition:
         vdan.define_string_property("vm", "Virtual Machine")
         vdan.define_numeric_property("vdan_id", "VDAN Identifier")
         vdan.define_numeric_property("switch_id", "Switch ID")
+        vdan.define_string_property("switch_uuid", "Switch UUID")
         vdan.define_string_property("switch_name", "Switch Name")
         vdan.define_metric("vdan_age", "VDAN Age")
         vdan.define_metric("lanA_prpTxPkts", "LAN-A PRP Transmitted Packets")
@@ -139,12 +130,11 @@ def get_adapter_definition() -> AdapterDefinition:
 
         lan = definition.define_object_type("lan", "NSX IvS LAN")
         lan.define_string_identifier("uuid", "UUID")
-        lan.define_string_identifier("switchID", "Switch ID")
         lan.define_string_property("uplink1", "Uplink 1")
         lan.define_string_property("uplink2", "Uplink 2")
         lan.define_string_property("policy", "Policy")
         lan.define_string_property("status", "Status")
-        lan.define_numeric_property("switch_id", "Switch ID")
+        lan.define_string_property("switch_uuid", "Switch UUID")
         lan.define_string_property("switch_name", "Switch Name")
 
         port = definition.define_object_type("port", "NSX IvS Port")
@@ -153,6 +143,7 @@ def get_adapter_definition() -> AdapterDefinition:
         port.define_string_property("esxi_host", "ESXI Host")
         port.define_string_property("vm", "Virtual Machine")
         port.define_numeric_property("switch_id", "Switch ID")
+        port.define_string_property("switch_uuid", "Switch UUID")
         port.define_string_property("switch_name", "Switch Name")
         port.define_metric("tx_total_samples", "Transmit - Total Samples")
         port.define_metric("tx_min_latency", "Transmit - Minimum Latency", Units.TIME.MICROSECONDS)
@@ -299,10 +290,11 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                     result.with_error("Collection cannot proceeed as there are no ESXi hosts")
                     return result  
                 
+                logger.info(f'Get a list of distributed switches from VCF Operations')
+                distSwitchesDict = get_switches(client,adapter_instance_id)
                 logger.info(f'Get a list of VLANs from VCF Operations')
                 vlans = get_vlans(client,adapter_instance_id)
                 RelAddedToVMObjects = []
-                masterSwitchList = []
                 masterLANList = []
                 masterHostToSwitchDict = {}
                 hostCount = 0
@@ -401,7 +393,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             vSwitchInstanceListCmdOutput = cmdOutput[1]
 
                             if ensSwitchListCmdOutput:
-                                parsedENSSwitchList = parseENSSwitchList(ensSwitchListCmdOutput)
+                                parsedENSSwitchList = parse_ensswitch_list(ensSwitchListCmdOutput)
                                 if parsedENSSwitchList and len(parsedENSSwitchList) > 0:
                                     ensSwitchIDList = []
                                     for ensSwitch in parsedENSSwitchList:
@@ -425,14 +417,13 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                                 logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
                                 continue
                             
-                            switches, hostToSwitchDict = get_switches(host, parsedENSSwitchList, vSwitchInstanceListCmdOutput, masterSwitchList)
-                            for switchObj in switches:
-                                masterSwitchList.append(switchObj)
+                            hostToSwitchDict = get_host_switches(host, vSwitchInstanceListCmdOutput, parsedENSSwitchList)
                             if not masterHostToSwitchDict or len(masterHostToSwitchDict) == 0:
                                 masterHostToSwitchDict = hostToSwitchDict
                             else:
                                 for key, value in hostToSwitchDict.items():
                                     masterHostToSwitchDict[key] = value
+                            
                             
                             vmsByName = get_vms(client, adapter_instance_id, hostName)
                             ports = get_ports(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
@@ -456,7 +447,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                                     logger.info(f'Added VDAN {vdan.get_key().name} to VLAN {vlanID} relationship')
                             logger.info(f'VDAN to VLAN relationship on host {hostName} is complete ')                             
 
-                            lans = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterSwitchList, masterLANList, masterHostToSwitchDict)
+                            lans = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, distSwitchesDict, masterLANList, masterHostToSwitchDict)
                             for lanObj in lans:
                                 masterLANList.append(lanObj)
                             
@@ -477,8 +468,9 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         if sshClient:
                             sshClient.close()
                 try:
-                    result.add_objects(masterSwitchList)
-                    logger.info(f'Added {len(masterSwitchList)} collected switch objects for VCF Operations consumption')
+                    for switch in distSwitchesDict.values():
+                        result.add_object(switch)
+                    logger.info(f'Added {len(distSwitchesDict)} related distributed switch objects for VCF Operations consumption')
 
                     result.add_objects(masterLANList)
                     logger.info(f'Added {len(masterLANList)} collected LAN objects for VCF Operations consumption')

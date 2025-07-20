@@ -58,7 +58,7 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
         if vSwitchInstanceListCmdOutput:
             for ensSwitchID in ensSwitchIDList:
                 commands.append("nsxdp-cli ens prp stats vdan list -s " + str(ensSwitchID))
-        hostSwitchList = masterHostToSwitchDict[hostName]
+        
         numOfCommands = len(commands)
         if numOfCommands > 0:
             for command in commands:
@@ -84,19 +84,23 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                     logger.exception(f'Exception Message: {e}')
                 else:
                     logger.info(f'Command "{command}" output is ({output})')
-
+            
+            hostSwitchList = masterHostToSwitchDict[hostName]
             if len(results) == len(commands):
                 for i in range(len(ensSwitchIDList)):
+                    hostSwitchUUID = None
                     hostSwitchName = None
-                    foundHostSwitchName = False
+                    foundHostSwitch = False
                     for hostSwitch in hostSwitchList:
                         if hostSwitch['switchID'] == ensSwitchIDList[i]:
                             hostSwitchName = hostSwitch['friendlyName']
-                            foundHostSwitchName = True
+                            hostSwitchUUID = hostSwitch['switchUUID']
+                            foundHostSwitch = True
                             break
-                    if not foundHostSwitchName:
-                        logger.info(f'Port switch friendly name not found for switch ID {str(ensSwitchIDList[i])}. Will use UNKNOWN')
+                    if not foundHostSwitch:
+                        logger.info(f'VDAN switch friendly name not found for switch ID {str(ensSwitchIDList[i])}. Will use UNKNOWN')
                         hostSwitchName = "UNKNOWN"
+                        hostSwitchUUID = "UNKNOWN"
                     try:
                         vdanResults = parse_vdan_output(results[i])
                         for vdan in vdanResults:
@@ -107,7 +111,7 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                     uuid=uuid,
                                     host=hostName
                                 )
-                                vdanObj.with_property("esxi_host",hostName)
+                                
                                 if "vdanIndex" in vdan:
                                     vdanObj.with_property("vdan_id",vdan["vdanIndex"])
                                 if "mac" in vdan and vdan['mac']:
@@ -142,7 +146,9 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                     vdanObj.with_metric("lanB_supTxPkts", vdan["lanB"]["supTxPkts"])
 
                                 vdanObj.with_property("switch_id",ensSwitchIDList[i])
+                                vdanObj.with_property("switch_uuid",hostSwitchUUID)
                                 vdanObj.with_property("switch_name",hostSwitchName)
+                                vdanObj.with_property("esxi_host",hostName)
                                 vdanObj.add_parent(host)
                                 logger.info(f'Added VDAN {str(vdan["vdanIndex"])} to Host {hostName} relationship on host {hostName}')
                                 vdanToHostRelationsAdded += 1                  

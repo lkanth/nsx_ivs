@@ -9,63 +9,101 @@ from aria.ops.object import Identifier
 from aria.ops.object import Key
 from aria.ops.object import Object
 from aria.ops.timer import Timer
-
+from aria.ops.suite_api_client import SuiteApiClient
+from constants import VCENTER_ADAPTER_KIND
+from constants import VCFOPS_DISTSWITCH_UUID_PROPERTY_KEY
+import json
 import re
 
 logger = logging.getLogger(__name__)
 
 
-class Switch(Object):
+def get_switches(suite_api_client: SuiteApiClient, adapter_instance_id: str):
 
-    def __init__(self, name: str, uuid: str):
-        self.uuid = uuid
-        self.name = name
-        super().__init__(
-            key=Key(
-                name=name,
-                # adapter_kind should match the key defined for the AdapterKind in line 4 of the describe.xml
-                adapter_kind=constants.ADAPTER_KIND,
-                # object_kind should match the key used for the ResourceKind in line 15 of the describe.xml
-                object_kind="switch",
-                identifiers=[Identifier(key="uuid", value=uuid)],
-            )
+    switchesByUUID = {}
+    
+    try:
+        logger.info(f'Making VCF Operations REST API call to retrieve a list of Distributed Virtual Switches')
+        distSwitchList: List[Object] = suite_api_client.query_for_resources(
+            {
+                "adapterKind": [VCENTER_ADAPTER_KIND],
+                "resourceKind": ["VmwareDistributedVirtualSwitch"],
+                "adapterInstanceId": [adapter_instance_id],
+            }
         )
+        logger.info(f'VCF Operations REST API call returned response with {len(distSwitchList)} Distributed Switch objects')
+                   
+        for distSwitch in distSwitchList:
+            distSwitchUUID = get_distswitch_property(suite_api_client, distSwitch, VCFOPS_DISTSWITCH_UUID_PROPERTY_KEY)
+            if distSwitchUUID:
+                switchesByUUID[distSwitchUUID] = distSwitch
+            else:
+                switchesByUUID[distSwitch.get_key().name] = distSwitch
+        i = 0
+        distSwitchUUIDs = ''
+        for key in switchesByUUID:
+            i += 1
+            distSwitchUUIDs = distSwitchUUIDs + " " + str(i) + "." + key + "\n"
+        logger.info(f'Distributed switches retrieved {distSwitchUUIDs}')  
+    except Exception as e:
+        logger.error(f'Exception occured while getting a list of virtual machines from VCF Operations. Exception Type: {type(e).__name__}')
+        logger.exception(f'Exception Message: {e}') 
+    return switchesByUUID
+
+def get_distswitch_property(suite_api_client: SuiteApiClient, distSwitch: Object, property: str) -> str:
+    try:
+        logger.info(f'Making VCF Operations REST API call to retrieve distributed switch resource identifier')
+        response = suite_api_client.get(f'/api/resources?name={distSwitch.get_key().name}&resourceKind=VmwareDistributedVirtualSwitch&_no_links=true')
+        resource_id = json.loads(response.content)["resourceList"][0]["identifier"]
+        logger.info(f'Response from VCF Operations REST API call - Distributed switch resource identifier is: {resource_id}')
+        if not resource_id:
+            logger.info(f'Distributed Switch resource identifier cannot be empty or NULL')
+            return None
+        
+        logger.info(f'Making VCF Operations REST API call to retrieve distributed switch properties')
+        propResponse = suite_api_client.get(f'/api/resources/{resource_id}/properties?_no_links=true')
+        logger.info(f'Retrieved distributed switch properties from VCF Operations')
+        properties_list = json.loads(propResponse.content)["property"]
+        for prop in properties_list:
+            if prop["name"] == property:
+                return prop["value"]
+    except Exception as e:
+        logger.error(f'Exception occured while getting Logical Switch property values from VCF Operations. Exception Type: {type(e).__name__}')
+        logger.exception(f'Exception Message: {e}')
+    return None
 
 
-def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmdOutput: str, masterSwitchList: List):
-
-    switches = []
+def get_host_switches(host: Object, vSwitchInstanceListCmdOutput: str, parsedENSSwitchList: List):
     vSwitchInstances = []
     hostName = host.get_key().name
-    hostToSwitchRelationsAdded = 0
     hostToSwitchDict = {}
     hostToSwitchList = []
 
-    with Timer(logger, f'Switch objects collection on host {hostName}'):
+    with Timer(logger, f'Collection of switch configuration on Host {hostName}'):
         try:
-            if vSwitchInstanceListCmdOutput is not None and vSwitchInstanceListCmdOutput:
+            if vSwitchInstanceListCmdOutput:
                 dvsPortSetLines = getDVSPortSetLines(vSwitchInstanceListCmdOutput)
-                if dvsPortSetLines is not None and dvsPortSetLines and len(dvsPortSetLines) > 0:
+                if dvsPortSetLines and len(dvsPortSetLines) > 0:
                     for dvsPortSetLine in dvsPortSetLines:
                         DVSPortRowDict = parseDVSPortSetLine(dvsPortSetLine)
                         if "vSwitchName" not in DVSPortRowDict or DVSPortRowDict['vSwitchName'] is None or not DVSPortRowDict['vSwitchName']:
                             logger.info(f'Switch name in parsed DVsPortRow of vSwitch instance list command output is empty on host {hostName}. ')
-                            return switches, hostToSwitchDict
+                            return hostToSwitchDict
                         if "friendlyName" not in DVSPortRowDict or DVSPortRowDict['friendlyName'] is None or not DVSPortRowDict['friendlyName']:
                             logger.info(f'Switch label in parsed DVsPortRow of vSwitch instance list command output is empty on host {hostName}. ')
-                            return switches, hostToSwitchDict
+                            return hostToSwitchDict
                         if "switchUUID" not in DVSPortRowDict or DVSPortRowDict['switchUUID'] is None or not DVSPortRowDict['switchUUID']:
                             logger.info(f'Switch UUID in parsed DVsPortRow of vSwitch instance list command output is empty on host {hostName}. ')
-                            return switches, hostToSwitchDict
+                            return hostToSwitchDict
                         vSwitchInstances.append(DVSPortRowDict)
             else:
                 logger.info(f'vswitch instance list command output is empty. No switches are configured on host {hostName}. ')
-                return switches, hostToSwitchDict
+                return hostToSwitchDict
         except Exception as e:
             logger.error(f'Exception occured while parsing DVS Port Set Lines in vSwitch Instance List command output. Exception Type: {type(e).__name__}')
             logger.exception(f'Exception Message: {e}')
-            return switches, hostToSwitchDict
-        if parsedENSSwitchList is not None and parsedENSSwitchList and len(parsedENSSwitchList) > 0:
+            return hostToSwitchDict
+        if parsedENSSwitchList and len(parsedENSSwitchList) > 0:
             logger.info(f'parsedENSSwitchList {parsedENSSwitchList}')
             for ensSwitch in parsedENSSwitchList:
                 try:
@@ -78,26 +116,6 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
                         swID = ensSwitch['swID']
                     else:
                         logger.info(f"switch ID not found in the ENS switch list command output on host {hostName}")
-                        continue
-                    if "maxPorts" in ensSwitch and ensSwitch['maxPorts'] is not None and ensSwitch['maxPorts'] != '':
-                        maxPorts = ensSwitch['maxPorts']
-                    else:
-                        logger.info(f'Max ports not found in the ENS switch list command output on host {hostName}')
-                        continue
-                    if "mtu" in ensSwitch and ensSwitch['mtu'] is not None and ensSwitch['mtu'] != '':
-                        mtu = ensSwitch['mtu']
-                    else:
-                        logger.info(f'MTU not found in the ENS switch list command output on host {hostName}')
-                        continue
-                    if "numLcores" in ensSwitch and ensSwitch['numLcores'] is not None and ensSwitch['numLcores'] != '':
-                        numLcores = ensSwitch['numLcores']
-                    else:
-                        logger.info(f'Number of LCores not found in the ENS switch list command output on host {hostName}')
-                        continue
-                    if "lcoreIDs" in ensSwitch and ensSwitch['lcoreIDs'] is not None and ensSwitch['lcoreIDs'] != '':
-                        lcoreIDs = ensSwitch['lcoreIDs']
-                    else:
-                        logger.info(f'lcoreIDs not found in the ENS switch list command output on host {hostName}')
                         continue
                     for vSwitchInstance in vSwitchInstances:
                         if vSwitchInstance['vSwitchName'] == ensSwitchName:
@@ -118,52 +136,17 @@ def get_switches(host: Object, parsedENSSwitchList: List, vSwitchInstanceListCmd
                     switchEntryDict['vSwitchName'] = ensSwitchName
                     switchEntryDict['friendlyName'] = friendlyName
                     hostToSwitchList.append(switchEntryDict)
-                    
-                    
-                    foundMasterSwitch = False
-                    if masterSwitchList and len(masterSwitchList) > 0:
-                        for masterSwitch in masterSwitchList:
-                            if masterSwitch.get_property_values("switch_uuid")[0] and masterSwitch.get_property_values("switch_uuid")[0] == switchUUID:
-                                host.add_parent(masterSwitch)
-                                logger.info(f'Added host {hostName} to switch {swID} relationship')
-                                hostToSwitchRelationsAdded += 1
-                                foundMasterSwitch = True
-                                break
-                    else:
-                        logger.info(f'No switches in the collection yet.')
-                        foundMasterSwitch = False
-                    if not foundMasterSwitch:
-                        uuid = str(swID) + "_" + switchUUID
-                        switch = Switch(name=friendlyName, uuid=uuid)
-                        switch.with_property("switch_id", swID)
-                        switch.with_property("esxi_host", hostName)
-                        switch.with_property("internal_name", ensSwitchName)
-                        switch.with_property("switch_uuid", switchUUID)
-                        switch.with_property("max_ports", maxPorts)
-                        switch.with_property("MTU", mtu)
-                        switch.with_property("num_lcores", numLcores)
-                        switch.with_property("lcore_ids", lcoreIDs)
-
-                        host.add_parent(switch)
-                        hostToSwitchRelationsAdded += 1
-                        logger.info(f'Added host {hostName} to switch {swID} relationship')
-                        switches.append(switch)
-                        logger.info(f'Added one switch to the collection.')
-                    else:
-                        logger.info(f'Switch is not different from the ones collected already')
                 except Exception as e:
                     logger.error(f'Exception occured while parsing ENS Switch List {parsedENSSwitchList}. Exception Type: {type(e).__name__}')
                     logger.exception(f'Exception Message: {e}')
         else:
             logger.info(f'No ENS switches are configured on host {hostName}')
     hostToSwitchDict[hostName] = hostToSwitchList
-    logger.info(f'There are {len(masterSwitchList)} switches that are already connected to the host {hostName}. Collected {len(switches)} additional switches from host {hostName}. ')
-    logger.info(f'Added Host relationships to {hostToSwitchRelationsAdded} switches')  
-    return switches, hostToSwitchDict
+    logger.info(f'The following switches are {hostToSwitchDict[hostName]} configured on the host {hostName}.') 
+    return hostToSwitchDict
 
 
-
-def parseENSSwitchList(ensSwitchListCmdOutput: str):
+def parse_ensswitch_list(ensSwitchListCmdOutput: str):
     lines = ensSwitchListCmdOutput.strip().splitlines()
 
     # Skip header and separator

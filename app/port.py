@@ -62,7 +62,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                 commands.append("nsxdp-cli ens latency system dump -s " + str(ensSwitchID))
             for ensSwitchID in ensSwitchIDList:    
                 commands.append("nsxdp-cli ens latency system clear -s " + str(ensSwitchID))
-            hostSwitchList = masterHostToSwitchDict[hostName]
+            
             numOfCommands = len(commands)
             if numOfCommands > 0:
                 for command in commands:
@@ -88,19 +88,22 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                         logger.exception(f'Exception Message: {e}')
                     else:
                         logger.info(f'Command "{command}" output is ({output})')
-
+                hostSwitchList = masterHostToSwitchDict[hostName]
                 if len(results) == len(commands): 
                     for i in range(len(ensSwitchIDList)):
+                        hostSwitchUUID = None
                         hostSwitchName = None
-                        foundHostSwitchName = False
+                        foundHostSwitch = False
                         for hostSwitch in hostSwitchList:
                             if hostSwitch['switchID'] == ensSwitchIDList[i]:
                                 hostSwitchName = hostSwitch['friendlyName']
-                                foundHostSwitchName = True
+                                hostSwitchUUID = hostSwitch['switchUUID']
+                                foundHostSwitch = True
                                 break
-                        if not foundHostSwitchName:
+                        if not foundHostSwitch:
                             logger.info(f'Port switch friendly name not found for switch ID {str(ensSwitchIDList[i])}. Will use UNKNOWN')
                             hostSwitchName = "UNKNOWN"
+                            hostSwitchUUID = "UNKNOWN"
                         port_results = re.split("PortID:\s+", results[i])[1:]
                         if port_results and len(port_results) > 0:
                             for port_result in port_results:
@@ -118,7 +121,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                         max_latency = re.split("\s+", lines[4])
                                         mean_line = re.split("\s+", lines[5])
 
-                                        port.with_property("esxi_host", hostName)                                                       
+                                                                                              
 
                                         if samples_line[1] is not None and samples_line[1] != '':
                                             port.with_metric("tx_total_samples", samples_line[1])
@@ -154,10 +157,10 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                         else:
                                             logger.info(f'rx_mean is either null or empty. Port metric rx_mean value was not collected.')
 
-                                        
                                         port.with_property("switch_id",ensSwitchIDList[i])
+                                        port.with_property("switch_uuid",hostSwitchUUID)
                                         port.with_property("switch_name",hostSwitchName)
-                                        
+                                        port.with_property("esxi_host", hostName) 
                                         port.add_parent(host)
                                         portToHostRelationsAdded += 1
                                         logger.info(f'Added port {portIDFromCmdOutput} to Host {hostName} relationship on host {hostName}')
