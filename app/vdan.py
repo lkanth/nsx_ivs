@@ -2,18 +2,15 @@
 #  SPDX-License-Identifier: Apache-2.0
 import logging
 import re
-import traceback
 from typing import List
 from aria.ops.timer import Timer
 import constants
-from aria.ops.data import Metric
 from aria.ops.object import Identifier
 from aria.ops.object import Key
 from aria.ops.object import Object
 import paramiko
 from paramiko import SSHClient
-import port
-from port import getVMMOID
+from port import get_vm_moid
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +238,7 @@ def add_vdan_vm_relationship(vdans: List, vmMacNameDict:dict, vmsByName: dict, s
                             logger.info(f'VDAN ({vdanObj.get_key().name}) to VM ({vms[0].get_key().name}) relationship was created')
                             RelAddedToVMObjects.append(vms[0])                                        
                         elif len(vms) > 1:
-                            vmMOID = getVMMOID(suiteAPIClient,vmName,vmMacAddress)
+                            vmMOID = get_vm_moid(suiteAPIClient,vmName,vmMacAddress)
                             for vm in vms:                                            
                                 if vm.get_identifier_value("VMEntityObjectID") == vmMOID:                                                
                                     vdanObj.add_parent(vm)

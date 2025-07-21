@@ -2,11 +2,6 @@
 #  SPDX-License-Identifier: Apache-2.0
 import logging
 from typing import List
-
-import constants
-from aria.ops.data import Metric
-from aria.ops.object import Identifier
-from aria.ops.object import Key
 from aria.ops.object import Object
 from aria.ops.timer import Timer
 from aria.ops.suite_api_client import SuiteApiClient
@@ -82,10 +77,10 @@ def get_host_switches(host: Object, vSwitchInstanceListCmdOutput: str, parsedENS
     with Timer(logger, f'Collection of switch configuration on Host {hostName}'):
         try:
             if vSwitchInstanceListCmdOutput:
-                dvsPortSetLines = getDVSPortSetLines(vSwitchInstanceListCmdOutput)
+                dvsPortSetLines = get_DVSPortSet_lines(vSwitchInstanceListCmdOutput)
                 if dvsPortSetLines and len(dvsPortSetLines) > 0:
                     for dvsPortSetLine in dvsPortSetLines:
-                        DVSPortRowDict = parseDVSPortSetLine(dvsPortSetLine)
+                        DVSPortRowDict = parse_DVSPortSet_line(dvsPortSetLine)
                         if "vSwitchName" not in DVSPortRowDict or DVSPortRowDict['vSwitchName'] is None or not DVSPortRowDict['vSwitchName']:
                             logger.info(f'Switch name in parsed DVsPortRow of vSwitch instance list command output is empty on host {hostName}. ')
                             return hostToSwitchDict
@@ -181,7 +176,7 @@ def parse_ensswitch_list(ensSwitchListCmdOutput: str):
             ensSwitchList.append(entry)
     return ensSwitchList
 
-def parseDVSPortSetLine(line):
+def parse_DVSPortSet_line(line):
     pattern = r'^(\S+)\s+\(([^)]+)\)\s+(.*)$'
     match = re.match(pattern, line.strip())
 
@@ -195,7 +190,7 @@ def parseDVSPortSetLine(line):
     else:
         return None
 
-def getDVSPortSetLines(vSwitchInstanceListCmdOutput: str):
+def get_DVSPortSet_lines(vSwitchInstanceListCmdOutput: str):
     dvsPortSetlines = []
     lines = vSwitchInstanceListCmdOutput.strip().split('\n')
     for line in lines:

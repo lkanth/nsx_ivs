@@ -4,11 +4,8 @@ import logging
 import re
 import json
 from typing import List
-from typing import Any
-import traceback
 from aria.ops.timer import Timer
 import constants
-from aria.ops.data import Metric
 from aria.ops.object import Identifier
 from aria.ops.object import Key
 from aria.ops.object import Object
@@ -241,7 +238,7 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: dic
                                                 logger.info(f"Port ({port.get_key().name}) to VM ({vms[0].get_key().name}) relationship was created")
                                                 RelAddedToVMObjects.append(vms[0])                                        
                                             elif len(vms) > 1:
-                                                vmMOID = getVMMOID(suiteAPIClient,vmName,vmNICMacaddress)
+                                                vmMOID = get_vm_moid(suiteAPIClient,vmName,vmNICMacaddress)
                                                 for vm in vms:                                            
                                                     if vm.get_identifier_value("VMEntityObjectID") == vmMOID:                                                
                                                         port.add_parent(vm)
@@ -267,7 +264,7 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: dic
     logger.info(f'Added VLAN relationships to {portToVLANRelationsAdded} Ports')        
     return RelAddedToVMObjects, vmMacNameDict
 
-def getVMMOID(suite_api_client: SuiteApiClient, vmName: str, vmNICMacaddress: str ) -> str:
+def get_vm_moid(suite_api_client: SuiteApiClient, vmName: str, vmNICMacaddress: str ) -> str:
     try:
         vmResourceIDs = []
         MAC_ADDRESS_PROPERTY_NAME = "mac_address"

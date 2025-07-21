@@ -8,20 +8,14 @@ from typing import List
 from typing import Optional
 from aria.ops.suite_api_client import key_to_object
 from aria.ops.suite_api_client import SuiteApiClient
-import re
 
 import paramiko
-from paramiko import SSHClient
-import traceback
-import pyVim
 from pyVim.connect import Disconnect
 from pyVim.connect import SmartConnect
 
 import aria.ops.adapter_logging as logging
 import constants
 from aria.ops.adapter_instance import AdapterInstance
-from aria.ops.data import Metric
-from aria.ops.data import Property
 from aria.ops.definition.adapter_definition import AdapterDefinition
 from aria.ops.definition.units import Units
 from aria.ops.result import CollectResult
@@ -34,19 +28,8 @@ from port import get_ports
 from constants import ADAPTER_KIND
 from constants import ADAPTER_NAME
 from constants import HOST_IDENTIFIER
-from constants import PORT_IDENTIFIER
-from constants import USER_CREDENTIAL 
-from constants import PASSWORD_CREDENTIAL 
 from constants import VCENTER_ADAPTER_KIND
-#import switch
-import port
-import vdan
-import lan
-import node
-import host
-import vlan
-import vm
-import switch
+
 from vlan import get_vlans
 from port import add_port_relationships
 from host import get_hosts

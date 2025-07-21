@@ -1,15 +1,12 @@
 #  Copyright 2023 VMware, Inc.
 #  SPDX-License-Identifier: Apache-2.0
 import logging
-import json
 from typing import Any
 from typing import List
 
 from aria.ops.object import Object
-from aria.ops.result import CollectResult
 from aria.ops.suite_api_client import SuiteApiClient
 from constants import VCENTER_ADAPTER_KIND
-from pyVmomi import vim
 
 logger = logging.getLogger(__name__)
 

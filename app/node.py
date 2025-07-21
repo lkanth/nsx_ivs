@@ -2,8 +2,6 @@
 #  SPDX-License-Identifier: Apache-2.0
 import logging
 import re
-import traceback
-from typing import List
 from aria.ops.timer import Timer
 import constants
 from aria.ops.data import Metric
@@ -98,7 +96,7 @@ def get_nodes(ssh: SSHClient, host: Object):
                         lnode.with_property("esxi_host", hostName)
         
                         lnode.with_property("type", columns[3])
-                        lnode.add_metric(Metric(key="node_age", value=columns[4])                    )
+                        lnode.add_metric(Metric(key="node_age", value=columns[4]))
                         lnode.add_parent(host)
                         logger.info(f'Added Node {str(columns[0])} to Host {hostName} relationship')
                         nodes.append(lnode)
