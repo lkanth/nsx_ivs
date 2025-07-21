@@ -141,19 +141,6 @@ def get_adapter_definition() -> AdapterDefinition:
 
         return definition
 
-def get_host(adapter_instance: AdapterInstance) -> str:
-    """
-    Helper method that gets the host and prepends the https protocol to the host if
-    the protocol is not present
-    :param adapter_instance: Adapter Instance object that holds the configuration
-    :return: The host, including the protocol
-    """
-    host = adapter_instance.get_identifier_value("host")
-    if host.startswith("http"):
-        return str(host)
-    else:
-        return f"https://{host}"
-
 def test(adapter_instance: AdapterInstance) -> TestResult:
     with Timer(logger, "Test connection"): 
         logger.info(f'Setup adapter for testing connection')      
