@@ -201,7 +201,7 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: dic
                                     port = port_by_name.get(f"{vSwitchInstanceLineDict['portNumber'].strip()}")                        
                                     vlan = vlans_by_name.get(f"{vSwitchInstanceLineDict['vid'].strip()}")
                                     if not port or not vlan:
-                                        logger.info(f"Port ({vSwitchInstanceLineDict['portNumber']}:{port}) to VLAN ({vSwitchInstanceLineDict['vid']}:{vlan}) relationship was not created.")
+                                        logger.info(f"Port ({vSwitchInstanceLineDict['portNumber']}:{port}) to VLAN ({str(vSwitchInstanceLineDict['vid'])}:{vlan}) relationship was not created.")
                                     else:
                                         port.add_parent(vlan)
                                         if vSwitchInstanceLineDict['vid'].strip().isnumeric():
