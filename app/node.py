@@ -74,7 +74,6 @@ def get_nodes(ssh: SSHClient, host: Object):
             return nodes
         else:
             logger.info(f'Node collection command output "{result}"')
-
         try:
             logger.info(f'Parsing node collection result')
             if result:
@@ -92,7 +91,8 @@ def get_nodes(ssh: SSHClient, host: Object):
                         )
 
                         lnode.with_property("mac", mac)
-                        lnode.with_property("vlan_id", columns[2])
+                        if columns[2].isnumeric():
+                            lnode.with_property("vlan_id", int(columns[2]))
                         lnode.with_property("esxi_host", hostName)
         
                         lnode.with_property("type", columns[3])

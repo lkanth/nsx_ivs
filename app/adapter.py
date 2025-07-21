@@ -107,7 +107,7 @@ def get_adapter_definition() -> AdapterDefinition:
         node.define_string_identifier("host", "ESXi Server")
         node.define_string_property("esxi_host", "ESXI Host")
         node.define_string_property("mac", "MAC Address")
-        node.define_string_property("vlan_id", "vLAN")
+        node.define_numeric_property("vlan_id", "vLAN")
         node.define_string_property("type", "Node Type")
         node.define_metric("node_age", "Node Age")
 
