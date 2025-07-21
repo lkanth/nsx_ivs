@@ -182,7 +182,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
     logger.info(f'Added host relationships to {portToHostRelationsAdded} Ports on host {hostName}')             
     return ports
 
-def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: {}, ports: List[Port], vmsByName: {}, suiteAPIClient) -> List:
+def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: dict, ports: List[Port], vmsByName: dict, suiteAPIClient) -> List:
     RelAddedToVMObjects = []   
     delimiterChar = ".eth"
     vmMacNameDict = {}

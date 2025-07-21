@@ -156,7 +156,7 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                             else:
                                 logger.error(f'VDAN Index does not exist in parsed VDAN list command output: {vdanResults}') 
                     except:
-                        logger.error(f"Exception occured while parsing command output {result}. Exception Type: {type(e).__name__}")
+                        logger.error(f"Exception occured while parsing command output {results[i]}. Exception Type: {type(e).__name__}")
                         logger.exception(f"Exception Message: {e}")
             else:
                 logger.error(f'Number of commands executed does not match with the number of outputs retrieved')               
