@@ -123,6 +123,7 @@ def get_adapter_definition() -> AdapterDefinition:
         port = definition.define_object_type("port", "NSX IvS Port")
         port.define_string_identifier("uuid", "UUID")
         port.define_string_identifier("host", "ESXi Server")
+        port.define_numeric_property("vlan_id", "vLAN")
         port.define_string_property("esxi_host", "ESXI Host")
         port.define_string_property("vm", "Virtual Machine")
         port.define_numeric_property("switch_id", "Switch ID")
