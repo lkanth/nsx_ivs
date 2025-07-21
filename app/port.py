@@ -116,9 +116,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                         samples_line = re.split("\s+", lines[2])
                                         min_latency = re.split("\s+", lines[3])
                                         max_latency = re.split("\s+", lines[4])
-                                        mean_line = re.split("\s+", lines[5])
-
-                                                                                              
+                                        mean_line = re.split("\s+", lines[5])                                                     
 
                                         if samples_line[1] is not None and samples_line[1] != '':
                                             port.with_metric("tx_total_samples", samples_line[1])
@@ -198,7 +196,7 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: dic
                             rows = re.split("\n", port_result)[3:]
                             numOfRows = len(rows)                            
                             for rowIndex in range(numOfRows):
-                                vSwitchInstanceLineDict =  parsevSwitchInstanceOutput(rows[rowIndex]) 
+                                vSwitchInstanceLineDict =  parse_vSwitch_instance_output(rows[rowIndex]) 
                                 if vSwitchInstanceLineDict:
                                     port = port_by_name.get(f"{vSwitchInstanceLineDict['portNumber'].strip()}")                        
                                     vlan = vlans_by_name.get(f"{vSwitchInstanceLineDict['vid'].strip()}")
@@ -214,9 +212,9 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: dic
                                     subRowIndex = rowIndex
                                     while ((subRowIndex + 1) < numOfRows):                                
                                         subRowIndex += 1
-                                        nextvSwitchInstanceLineDict =  parsevSwitchInstanceOutput(rows[subRowIndex])                                     
+                                        nextvSwitchInstanceLineDict =  parse_vSwitch_instance_output(rows[subRowIndex])                                     
                                         if nextvSwitchInstanceLineDict is None or not nextvSwitchInstanceLineDict:                              
-                                            if parsevSwitchInstanceOutputNoPort(rows[subRowIndex]):
+                                            if parse_vSwitch_instance_output_noport(rows[subRowIndex]):
                                                 clientName = clientName + rows[subRowIndex].strip()
                                             else:                                    
                                                 break
@@ -300,7 +298,7 @@ def get_vm_moid(suite_api_client: SuiteApiClient, vmName: str, vmNICMacaddress: 
     return None
 
 
-def parsevSwitchInstanceOutput(line):
+def parse_vSwitch_instance_output(line):
     pattern = r"(^.*) +(\d{5,}) +([0-9a-f-]+) +([0-9a-f:]+) +(\S+) +(\S+) +(\S+)"
     match = re.match(pattern, line)
     if match:
@@ -317,7 +315,7 @@ def parsevSwitchInstanceOutput(line):
     else:
         return None
     
-def parsevSwitchInstanceOutputNoPort(line):
+def parse_vSwitch_instance_output_noport(line):
     pattern = r"^(?!.*\b\d{8,}\b).*$"
     match = re.match(pattern, line)
     if match:

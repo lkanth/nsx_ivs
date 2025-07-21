@@ -11,10 +11,7 @@ from aria.ops.object import Object
 import paramiko
 from paramiko import SSHClient
 
-
-
 logger = logging.getLogger(__name__)
-
 
 class Lan(Object):
 
