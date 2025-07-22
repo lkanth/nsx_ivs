@@ -24,24 +24,35 @@ from aria.ops.result import TestResult
 from aria.ops.timer import Timer
 from aria.ops.object import Object
 
-from port import get_ports
+
 from constants import ADAPTER_KIND
 from constants import ADAPTER_NAME
 from constants import HOST_IDENTIFIER
 from constants import VCENTER_ADAPTER_KIND
 
 from vlan import get_vlans
+
+from port import get_ports
 from port import add_port_relationships
+
 from host import get_hosts
 from host import get_host_property
+
 from vdan import get_vdans
-from node import get_nodes
-from lan import get_lans
-from vm import get_vms
+from vdan import add_vdan_vlan_relationship
 from vdan import add_vdan_vm_relationship
+
+from node import get_nodes
+from node import add_node_vlan_relationship
+
+from lan import get_lans
+
+from vm import get_vms
+
 from switch import parse_ensswitch_list
 from switch import get_switches
 from switch import get_host_switches
+
 logger = logging.getLogger(__name__)
 
 
@@ -264,7 +275,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                 logger.info(f'Get a list of distributed switches from VCF Operations')
                 distSwitchesDict = get_switches(client,adapter_instance_id)
                 logger.info(f'Get a list of VLANs from VCF Operations')
-                vlans = get_vlans(client,adapter_instance_id)
+                vlansDict = get_vlans(client,adapter_instance_id)
                 RelAddedToVMObjects = []
                 masterLANList = []
                 masterHostToSwitchDict = {}
@@ -310,19 +321,6 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             logger.info(f'*********** Data collection from host {hostName} is complete ***********\n')
                             continue
                         else:
-                            nodes = get_nodes(sshClient, host)
-                            logger.info(f'Starting Node to VLAN relationship creation on host {hostName}') 
-                            for node in nodes:
-                                vlanID = str(node.get_property('vlan_id')[0].value)
-                                logger.info(f"Node {node.get_key().name}'s VLAN ID is {vlanID}")
-                                vlan = vlans.get(vlanID)
-                                if vlan:
-                                    node.add_parent(vlan)
-                                    logger.info(f'Added node {node.get_key().name} to VLAN {vlanID} relationship')
-                            logger.info(f'Node to VLAN relationship on host {hostName} is complete ') 
-                            result.add_objects(nodes)
-                            logger.info(f'Added {len(nodes)} collected node objects from host {hostName} for VCF Operations consumption')
-                            
                             commands = ['nsxdp-cli ens switch list','nsxdp-cli vswitch instance list']
                             cmdOutput = []
                             caughtCMDException = False                        
@@ -400,28 +398,24 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             ports = get_ports(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
                             result.add_objects(ports)
                             logger.info(f'Added {len(ports)} collected port objects from host {hostName} for VCF Operations consumption')
-
-                            vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlans, ports, vmsByName, client)
+                            vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlansDict, ports, vmsByName, client)
 
                             vdans = get_vdans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
                             result.add_objects(vdans)
                             logger.info(f'Added {len(vdans)} collected VDAN objects from host {hostName} for VCF Operations consumption')
                             vDANVMList = add_vdan_vm_relationship(vdans, vmMacNameDict, vmsByName, client)
-                            
-                            logger.info(f'Starting VDAN to VLAN relationship on host {hostName}') 
-                            for vdan in vdans:
-                                vlanID = str(vdan.get_property('vlan_id')[0].value)
-                                logger.info(f"VDAN {vdan.get_key().name}'s VLAN ID is {vlanID}")  
-                                vlan = vlans.get(vlanID)
-                                if vlan:
-                                    vdan.add_parent(vlan)
-                                    logger.info(f'Added VDAN {vdan.get_key().name} to VLAN {vlanID} relationship')
-                            logger.info(f'VDAN to VLAN relationship on host {hostName} is complete ')                             
+                            add_vdan_vlan_relationship(hostName, vdans, vlansDict)
+                                                      
 
                             lans = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, distSwitchesDict, masterLANList, masterHostToSwitchDict)
                             for lanObj in lans:
                                 masterLANList.append(lanObj)
                             
+                            nodes = get_nodes(sshClient, host)
+                            result.add_objects(nodes)
+                            logger.info(f'Added {len(nodes)} collected node objects from host {hostName} for VCF Operations consumption')
+                            add_node_vlan_relationship(hostName, nodes, vlansDict)
+
                             if len(vmObjectList) > 0:
                                 for vmObject in vmObjectList:
                                     RelAddedToVMObjects.append(vmObject)
@@ -451,9 +445,12 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                     for vm in RelAddedToVMObjects:                                        
                         result.add_object(vm)
                     logger.info(f'Added {len(RelAddedToVMObjects)} related VM objects for VCF Operations consumption') 
-                    for vlan in vlans.values():
-                        result.add_object(vlan)
-                    logger.info(f'Added {len(vlans)} related Distributed Port objects for VCF Operations consumption')
+                    distPortGroupObjectsAdded = 0
+                    for distPortObjectList in vlansDict.values():
+                        for distPortObjectEntry in distPortObjectList:
+                            result.add_object(distPortObjectEntry['DistPortGroupObject'])
+                            distPortGroupObjectsAdded += 1
+                    logger.info(f'Added {distPortGroupObjectsAdded} related Distributed Port objects for VCF Operations consumption')
                 except Exception as e:
                     logger.error(f"Exception occured while adding objects for VCF Operations consumption. Exception Type: {type(e).__name__}")
                     logger.error(f'Unexpected collection error: {e}')

@@ -112,3 +112,21 @@ def get_nodes(ssh: SSHClient, host: Object):
     logger.info(f'Collected {len(nodes)} nodes from host {hostName}') 
     return nodes
 
+def add_node_vlan_relationship(hostName: str, nodes: list, vlansDict: dict) -> None:
+
+    logger.info(f'Starting Node to VLAN relationship creation on host {hostName}')
+    totalNodeToVLANRelationsAdded = 0
+    for node in nodes:
+        vlanID = str(node.get_property('vlan_id')[0].value)
+        logger.info(f"Node {node.get_key().name}'s VLAN ID is {vlanID}")
+        
+        distPortGroupsList = vlansDict.get(vlanID)
+        if distPortGroupsList:
+            for distPortGroup in distPortGroupsList:
+                if distPortGroup['DistPortGroupObject']:
+                    node.add_parent(distPortGroup['DistPortGroupObject'])
+                    totalNodeToVLANRelationsAdded += 1
+                    logger.info(f"Added node {node.get_key().name} to VLAN {vlanID} relationship with distributed port group: {distPortGroup['DistPortGroupObject'].get_key().name}")
+
+    logger.info(f'{totalNodeToVLANRelationsAdded} Node to VLAN relationships on host {hostName} were created. ') 
+

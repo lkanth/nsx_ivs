@@ -177,7 +177,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
     logger.info(f'Added host relationships to {portToHostRelationsAdded} Ports on host {hostName}')             
     return ports
 
-def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: dict, ports: List[Port], vmsByName: dict, suiteAPIClient) -> List:
+def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlansDict: dict, ports: List[Port], vmsByName: dict, suiteAPIClient) -> List:
     RelAddedToVMObjects = []   
     delimiterChar = ".eth"
     vmMacNameDict = {}
@@ -199,15 +199,17 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlans_by_name: dic
                                 vSwitchInstanceLineDict =  parse_vSwitch_instance_output(rows[rowIndex]) 
                                 if vSwitchInstanceLineDict:
                                     port = port_by_name.get(f"{vSwitchInstanceLineDict['portNumber'].strip()}")                        
-                                    vlan = vlans_by_name.get(f"{vSwitchInstanceLineDict['vid'].strip()}")
-                                    if not port or not vlan:
-                                        logger.info(f"Port ({vSwitchInstanceLineDict['portNumber']}:{port}) to VLAN ({str(vSwitchInstanceLineDict['vid'])}:{vlan}) relationship was not created.")
+                                    distPortGroupsList = vlansDict.get(f"{vSwitchInstanceLineDict['vid'].strip()}")
+                                    if not port or not distPortGroupsList:
+                                        logger.info(f"Port ({vSwitchInstanceLineDict['portNumber']}:{port}) to VLAN ({str(vSwitchInstanceLineDict['vid'])}:{distPortGroupsList}) relationship was not created.")
                                     else:
-                                        port.add_parent(vlan)
+                                        for distPortGroup in distPortGroupsList:
+                                            if distPortGroup['DistPortGroupObject']:
+                                                port.add_parent(distPortGroup['DistPortGroupObject'])
+                                                portToVLANRelationsAdded += 1
+                                                logger.info(f"Port {port.get_key().name} to VLAN {vSwitchInstanceLineDict['vid'].strip()} relationship was created with distributed port group: {distPortGroup['DistPortGroupObject'].get_key().name}")
                                         if vSwitchInstanceLineDict['vid'].strip().isnumeric():
                                             port.with_property("vlan_id", int(vSwitchInstanceLineDict['vid'].strip())) 
-                                        portToVLANRelationsAdded += 1
-                                        logger.info(f'Port ({port.get_key().name}) to VLAN ({vlan.get_key().name}) relationship was created')
                                     
                                     vmNICMacaddress = vSwitchInstanceLineDict['macAddress'].strip()
                                     clientName = vSwitchInstanceLineDict['clientName'].strip()
