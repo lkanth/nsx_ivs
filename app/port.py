@@ -177,7 +177,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
     logger.info(f'Added host relationships to {portToHostRelationsAdded} Ports on host {hostName}')             
     return ports
 
-def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlansDict: dict, ports: List[Port], vmsByName: dict, suiteAPIClient) -> List:
+def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlansDict: dict, ports: List[Port], vmsByName: dict, suiteAPIClient, portGroupSwitchDict: dict) -> List:
     RelAddedToVMObjects = []   
     delimiterChar = ".eth"
     vmMacNameDict = {}
@@ -203,8 +203,9 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlansDict: dict, p
                                     if not port or not distPortGroupsList:
                                         logger.info(f"Port ({vSwitchInstanceLineDict['portNumber']}:{port}) to VLAN ({str(vSwitchInstanceLineDict['vid'])}:{distPortGroupsList}) relationship was not created.")
                                     else:
+                                        portSwitchUUID = port.get_property('switch_uuid')[0].value
                                         for distPortGroup in distPortGroupsList:
-                                            if distPortGroup['DistPortGroupObject']:
+                                            if distPortGroup['switchUUID'] == portSwitchUUID and distPortGroup['DistPortGroupObject']:
                                                 port.add_parent(distPortGroup['DistPortGroupObject'])
                                                 portToVLANRelationsAdded += 1
                                                 logger.info(f"Port {port.get_key().name} to VLAN {vSwitchInstanceLineDict['vid'].strip()} relationship was created with distributed port group: {distPortGroup['DistPortGroupObject'].get_key().name}")
