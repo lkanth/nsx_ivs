@@ -275,7 +275,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                 logger.info(f'Get a list of distributed switches from VCF Operations')
                 distSwitchesDict = get_switches(client,adapter_instance_id)
                 logger.info(f'Get a list of VLANs from VCF Operations')
-                vlansDict, portGroupSwitchDict = get_vlans(client,adapter_instance_id, content)
+                vlansDict, portGroupSwitchDict = get_vlans(client,adapter_instance_id, content, distSwitchesDict)
                 RelAddedToVMObjects = []
                 masterLANList = []
                 masterHostToSwitchDict = {}

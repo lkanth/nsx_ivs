@@ -14,7 +14,7 @@ from constants import VCFOPS_DISTPORTGROUP_VLANID_PROPERTY_KEY
 logger = logging.getLogger(__name__)
 
 
-def get_vlans(suite_api_client: SuiteApiClient, adapter_instance_id: str, content) -> Any:
+def get_vlans(suite_api_client: SuiteApiClient, adapter_instance_id: str, content, switchesByUUID: dict) -> Any:
     vlansDict = {}
     portGroupSwitchDict = {}
     try:
@@ -36,11 +36,11 @@ def get_vlans(suite_api_client: SuiteApiClient, adapter_instance_id: str, conten
                 entryDict['DistPortGroupObject'] = distPortGroup
             
             if entryDict and len(entryDict) > 0:
+                if entryDict['switchUUID'] in switchesByUUID and entryDict['switchUUID']:
+                    distPortGroup.add_parent(switchesByUUID.get(entryDict['switchUUID']))
                 vlanID = get_distportgroup_property(suite_api_client, distPortGroup, VCFOPS_DISTPORTGROUP_VLANID_PROPERTY_KEY)
                 if vlanID is not None and vlanID != '' and vlanID.casefold() != 'none'.casefold():
                     vlansDict.setdefault(vlanID, []).append(entryDict)
-                else:
-                    vlansDict.setdefault(distPortGroup.get_key().name, []).append(entryDict)
         logger.info(f'VLAN IDs retrieved {vlansDict}')  
 
     except Exception as e:
