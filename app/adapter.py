@@ -93,7 +93,7 @@ def get_adapter_definition() -> AdapterDefinition:
         vdan.define_string_identifier("uuid", "UUID")
         vdan.define_string_identifier("host", "ESXi Server")
         vdan.define_string_property("mac", "MAC Address")
-        vdan.define_numeric_property("vlan_id", "vLAN")
+        vdan.define_string_property("vlan_id", "vLAN")
         vdan.define_numeric_property("fc_port_id", "fc Port ID")
         vdan.define_string_property("esxi_host", "ESXI Host")
         vdan.define_string_property("vm", "Virtual Machine")
@@ -118,7 +118,7 @@ def get_adapter_definition() -> AdapterDefinition:
         node.define_string_identifier("host", "ESXi Server")
         node.define_string_property("esxi_host", "ESXI Host")
         node.define_string_property("mac", "MAC Address")
-        node.define_numeric_property("vlan_id", "vLAN")
+        node.define_string_property("vlan_id", "vLAN")
         node.define_string_property("type", "Node Type")
         node.define_metric("node_age", "Node Age")
 
@@ -134,7 +134,7 @@ def get_adapter_definition() -> AdapterDefinition:
         port = definition.define_object_type("port", "NSX IvS Port")
         port.define_string_identifier("uuid", "UUID")
         port.define_string_identifier("host", "ESXi Server")
-        port.define_numeric_property("vlan_id", "vLAN")
+        port.define_string_property("vlan_id", "vLAN")
         port.define_string_property("esxi_host", "ESXI Host")
         port.define_string_property("vm", "Virtual Machine")
         port.define_numeric_property("switch_id", "Switch ID")
@@ -191,7 +191,7 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
 
 def collect(adapter_instance: AdapterInstance) -> CollectResult:
     with Timer(logger, "Collect data"):
-        logger.info(f'Setup adapter for collecting data')
+        logger.info(f'Setup adapter for collecting data - Version: 07252025-08:00:00')
         result = CollectResult()
         logger.info(f'Setup adapter for collecting data - Successful')
         try:
@@ -398,7 +398,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             ports = get_ports(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
                             result.add_objects(ports)
                             logger.info(f'Added {len(ports)} collected port objects from host {hostName} for VCF Operations consumption')
-                            vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlansDict, ports, vmsByName, client, portGroupSwitchDict)
+                            vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlansDict, ports, vmsByName, client)
 
                             vdans = get_vdans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
                             result.add_objects(vdans)

@@ -177,7 +177,7 @@ def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
     logger.info(f'Added host relationships to {portToHostRelationsAdded} Ports on host {hostName}')             
     return ports
 
-def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlansDict: dict, ports: List[Port], vmsByName: dict, suiteAPIClient, portGroupSwitchDict: dict) -> List:
+def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlansDict: dict, ports: List[Port], vmsByName: dict, suiteAPIClient) -> List:
     RelAddedToVMObjects = []   
     delimiterChar = ".eth"
     vmMacNameDict = {}
@@ -209,8 +209,7 @@ def add_port_relationships(vSwitchInstanceListCmdOutput: str, vlansDict: dict, p
                                                 port.add_parent(distPortGroup['DistPortGroupObject'])
                                                 portToVLANRelationsAdded += 1
                                                 logger.info(f"Port {port.get_key().name} to VLAN {vSwitchInstanceLineDict['vid'].strip()} relationship was created with distributed port group: {distPortGroup['DistPortGroupObject'].get_key().name}")
-                                        if vSwitchInstanceLineDict['vid'].strip().isnumeric():
-                                            port.with_property("vlan_id", int(vSwitchInstanceLineDict['vid'].strip())) 
+                                        port.with_property("vlan_id", vSwitchInstanceLineDict['vid'].strip()) 
                                     
                                     vmNICMacaddress = vSwitchInstanceLineDict['macAddress'].strip()
                                     clientName = vSwitchInstanceLineDict['clientName'].strip()

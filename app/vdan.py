@@ -111,10 +111,15 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                 
                                 if "vdanIndex" in vdan:
                                     vdanObj.with_property("vdan_id",vdan["vdanIndex"])
+                                else:
+                                    continue
                                 if "mac" in vdan and vdan['mac']:
                                     vdanObj.with_property("mac", vdan["mac"])
                                 if "vlanID" in vdan and vdan['vlanID'] is not None and vdan['vlanID'] != '':
                                     vdanObj.with_property("vlan_id", vdan["vlanID"])
+                                else:
+                                    defaultVLANID = "None"
+                                    vdanObj.with_property("vlan_id", defaultVLANID)
                                 if "fcPortID" in vdan and vdan['fcPortID'] is not None and vdan['fcPortID'] != '':
                                     vdanObj.with_property("fc_port_id", vdan["fcPortID"])
                                 if "vDANAge" in vdan and vdan['vDANAge'] is not None and vdan['vDANAge'] != '':
