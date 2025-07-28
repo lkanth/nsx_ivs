@@ -32,7 +32,7 @@ class Node(Object):
                 adapter_kind=constants.ADAPTER_KIND,
                 # object_kind should match the key used for the ResourceKind in line 15 of the describe.xml
                 object_kind="node",
-                identifiers=[Identifier(key="uuid", value=uuid), Identifier(key="host", value=host)],
+                identifiers=[Identifier(key="uuid", value=uuid)],
             )
         )
 
@@ -82,19 +82,10 @@ def get_nodes(ssh: SSHClient, host: Object):
                 while i < len(node_results):
                     columns = re.split("\s+", node_results[i])
                     if columns[0].isnumeric():
-                        uuid = str(columns[0]) + "_" + hostName
-                        mac = columns[1]
-                        lnode = Node(
-                            name= str(columns[0]),
-                            uuid=uuid,
-                            host=hostName
-                        )
-
+                        mac = columns[1].strip()
+                        lnode = Node(name = mac, uuid = mac)
                         lnode.with_property("mac", mac)
-                        
-                        lnode.with_property("vlan_id", columns[2])
-                        lnode.with_property("esxi_host", hostName)
-        
+                        lnode.with_property("vlan_id", columns[2].strip())
                         lnode.with_property("type", columns[3])
                         lnode.add_metric(Metric(key="node_age", value=columns[4]))
                         lnode.add_parent(host)

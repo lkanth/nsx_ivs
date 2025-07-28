@@ -29,6 +29,7 @@ from constants import ADAPTER_KIND
 from constants import ADAPTER_NAME
 from constants import HOST_IDENTIFIER
 from constants import VCENTER_ADAPTER_KIND
+from constants import LOGGER_DEBUG_LEVEL_IVS
 
 from vlan import get_vlans
 
@@ -54,6 +55,7 @@ from switch import get_switches
 from switch import get_host_switches
 
 logger = logging.getLogger(__name__)
+
 
 
 def get_adapter_definition() -> AdapterDefinition:
@@ -115,8 +117,6 @@ def get_adapter_definition() -> AdapterDefinition:
 
         node = definition.define_object_type("node", "NSX IvS Node")
         node.define_string_identifier("uuid", "UUID")
-        node.define_string_identifier("host", "ESXi Server")
-        node.define_string_property("esxi_host", "ESXI Host")
         node.define_string_property("mac", "MAC Address")
         node.define_string_property("vlan_id", "vLAN")
         node.define_string_property("type", "Node Type")
@@ -194,6 +194,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
         logger.info(f'Setup adapter for collecting data - Version: 07252025-08:00:00')
         result = CollectResult()
         logger.info(f'Setup adapter for collecting data - Successful')
+        currentLoggingLevel = logger.getEffectiveLevel()
         try:
             SSHPort = int(adapter_instance.get_identifier_value("ssh_port"))
             SSHUserName = adapter_instance.get_credential_value("ssh_username")
@@ -397,14 +398,18 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             vmsByName = get_vms(client, adapter_instance_id, hostName)
                             ports = get_ports(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
                             result.add_objects(ports)
-                            logger.info(f'Added {len(ports)} collected port objects from host {hostName} for VCF Operations consumption')
+                            logger.info(f'Added {len(ports)} collected port objects from host {hostName} for VCF Operations consumption')                            
+                            if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
+                                log_debug_objects_list(result, ports, "port")                        
                             vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlansDict, ports, vmsByName, client)
 
                             vdans = get_vdans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
                             result.add_objects(vdans)
                             logger.info(f'Added {len(vdans)} collected VDAN objects from host {hostName} for VCF Operations consumption')
+                            if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
+                                log_debug_objects_list(result, vdans, "vdan")
                             vDANVMList = add_vdan_vm_relationship(vdans, vmMacNameDict, vmsByName, client)
-                            add_vdan_vlan_relationship(hostName, vdans, vlansDict, portGroupSwitchDict)
+                            add_vdan_vlan_relationship(hostName, vdans, vlansDict, portGroupSwitchDict)                            
                                                       
 
                             lans = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, distSwitchesDict, masterLANList, masterHostToSwitchDict)
@@ -412,8 +417,11 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                                 masterLANList.append(lanObj)
                             
                             nodes = get_nodes(sshClient, host)
+                            if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
+                                log_debug_objects_list(result, nodes, "node")  
                             result.add_objects(nodes)
                             logger.info(f'Added {len(nodes)} collected node objects from host {hostName} for VCF Operations consumption')
+
                             add_node_vlan_relationship(hostName, nodes, vlansDict, portGroupSwitchDict, masterHostToSwitchDict)
 
                             if len(vmObjectList) > 0:
@@ -436,15 +444,25 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                     for switch in distSwitchesDict.values():
                         result.add_object(switch)
                     logger.info(f'Added {len(distSwitchesDict)} related distributed switch objects for VCF Operations consumption')
+                    if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
+                        log_debug_objects_dict(result, distSwitchesDict, "VmwareDistributedVirtualSwitch")
 
                     result.add_objects(masterLANList)
                     logger.info(f'Added {len(masterLANList)} collected LAN objects for VCF Operations consumption')
+                    if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
+                        log_debug_objects_list(result, masterLANList, "lan")
 
                     result.add_objects(hosts)
-                    logger.info(f'Added {len(hosts)} related Host objects for VCF Operations consumption')                                  
+                    logger.info(f'Added {len(hosts)} related Host objects for VCF Operations consumption')
+                    if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
+                        log_debug_objects_list(result, hosts, "HostSystem")
+
                     for vm in RelAddedToVMObjects:                                        
                         result.add_object(vm)
-                    logger.info(f'Added {len(RelAddedToVMObjects)} related VM objects for VCF Operations consumption') 
+                    logger.info(f'Added {len(RelAddedToVMObjects)} related VM objects for VCF Operations consumption')
+                    if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
+                        log_debug_objects_list(result, RelAddedToVMObjects, "VirtualMachine")
+
                     distPortGroupObjectsAdded = 0
                     for distPortObjectList in vlansDict.values():
                         for distPortObjectEntry in distPortObjectList:
@@ -453,6 +471,8 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                                 result.add_object(distPortObject)
                                 distPortGroupObjectsAdded += 1
                     logger.info(f'Added {distPortGroupObjectsAdded} related Distributed Port objects for VCF Operations consumption')
+                    if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
+                        log_debug_objects_dict(result, vlansDict, "DistributedVirtualPortgroup")
                 except Exception as e:
                     logger.error(f"Exception occured while adding objects for VCF Operations consumption. Exception Type: {type(e).__name__}")
                     logger.error(f'Unexpected collection error: {e}')
@@ -558,6 +578,43 @@ def _get_adapter_instance_id(client: SuiteApiClient, adapter_instance: Object) -
             adapter_instance_key = key_to_object(ai.get("resourceKey")).get_key()
             if adapter_instance_key == adapter_instance.get_key():
                 return ai.get("id")
+    return None
+
+def log_debug_objects_list(result, ivsObjects, ivsObectType):
+    ivsObjectDebugDict = {}
+    for ivsObjectDebug in ivsObjects:
+        ivsObjectDebugDict[ivsObjectDebug.get_key().name] = ivsObjectDebug.get_key()
+    logger.debug(f'{ivsObectType} objects added to the collection result object: {ivsObjectDebugDict}')
+    ivsObjectDebugResultDict = {}
+    ivsObjectDebugResultDict = result.get_json()
+    ivsObjectDebugDict = {}
+    if ivsObjectDebugResultDict and len(ivsObjectDebugResultDict) > 0 and "result" in ivsObjectDebugResultDict and len(ivsObjectDebugResultDict['result']) > 0:
+        for resultDebugJSON in ivsObjectDebugResultDict['result']:
+            if "key" in resultDebugJSON and "name" in resultDebugJSON['key'] and "objectKind" in resultDebugJSON['key'] and resultDebugJSON['key']['objectKind'] and resultDebugJSON['key']['objectKind'] == ivsObectType and "identifiers" in resultDebugJSON['key'] and resultDebugJSON['key']['identifiers']:
+                ivsObjectDebugDict[resultDebugJSON['key']['name']] = resultDebugJSON['key']['identifiers']
+        logger.debug(f"Result object {ivsObectType} contents: {ivsObjectDebugDict}")
+    return None
+
+def log_debug_objects_dict(result, ivsObjectsDict, ivsObectType):
+    ivsObjectDebugDict = {}
+    if ivsObectType != "DistributedVirtualPortgroup":
+        for ivsObjectDebug in ivsObjectsDict.values():
+            ivsObjectDebugDict[ivsObjectDebug.get_key().name] = ivsObjectDebug.get_key()
+    else:
+        for distPortObjectList in ivsObjectsDict.values():
+            for distPortObjectEntry in distPortObjectList:
+                if "DistPortGroupObject" in distPortObjectEntry:
+                    distPortObject = distPortObjectEntry['DistPortGroupObject']
+                    ivsObjectDebugDict[distPortObject.get_key().name] = distPortObject.get_key()
+    logger.debug(f'{ivsObectType} objects added to the collection result object: {ivsObjectDebugDict}')
+    ivsObjectDebugResultDict = {}
+    ivsObjectDebugResultDict = result.get_json()
+    ivsObjectDebugDict = {}
+    if ivsObjectDebugResultDict and len(ivsObjectDebugResultDict) > 0 and "result" in ivsObjectDebugResultDict and len(ivsObjectDebugResultDict['result']) > 0:
+        for resultDebugJSON in ivsObjectDebugResultDict['result']:
+            if "key" in resultDebugJSON and "name" in resultDebugJSON['key'] and "objectKind" in resultDebugJSON['key'] and resultDebugJSON['key']['objectKind'] and resultDebugJSON['key']['objectKind'] == ivsObectType and "identifiers" in resultDebugJSON['key'] and resultDebugJSON['key']['identifiers']:
+                ivsObjectDebugDict[resultDebugJSON['key']['name']] = resultDebugJSON['key']['identifiers']
+        logger.debug(f"Result object {ivsObectType} contents: {ivsObjectDebugDict}")
     return None
 
 # Main entry point of the adapter. You should not need to modify anything below this line.
