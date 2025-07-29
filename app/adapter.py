@@ -397,22 +397,21 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             
                             
                             vmsByName = get_vms(client, adapter_instance_id, hostName)
-                            ports = get_ports(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
+                            ports = get_ports(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)                       
+                            vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlansDict, ports, vmsByName, client)
                             result.add_objects(ports)
                             logger.info(f'Added {len(ports)} collected port objects from host {hostName} for VCF Operations consumption')                            
                             if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
-                                log_debug_objects_list(result, ports, "port")                        
-                            vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlansDict, ports, vmsByName, client)
+                                log_debug_objects_list(result, ports, "port") 
 
                             vdans = get_vdans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
+                            vDANVMList = add_vdan_vm_relationship(vdans, vmMacNameDict, vmsByName, client)
+                            add_vdan_vlan_relationship(hostName, vdans, vlansDict, portGroupSwitchDict)
                             result.add_objects(vdans)
                             logger.info(f'Added {len(vdans)} collected VDAN objects from host {hostName} for VCF Operations consumption')
                             if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
                                 log_debug_objects_list(result, vdans, "vdan")
-                            vDANVMList = add_vdan_vm_relationship(vdans, vmMacNameDict, vmsByName, client)
-                            add_vdan_vlan_relationship(hostName, vdans, vlansDict, portGroupSwitchDict)                            
-                                                      
-
+                                                 
                             lans = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, distSwitchesDict, masterLANList, masterHostToSwitchDict)
                             for lanObj in lans:
                                 masterLANList.append(lanObj)
@@ -448,13 +447,13 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                     if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
                         log_debug_objects_dict(result, distSwitchesDict, "VmwareDistributedVirtualSwitch")
 
+                    add_node_vlan_relationship(masterNodeDict, vlansDict, masterHostToSwitchDict)
                     for nodeObj in masterNodeDict.values():
                         result.add_object(nodeObj)
                     logger.info(f'Added {len(masterNodeDict)} node objects for VCF Operations consumption')
                     if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
                         log_debug_objects_dict(result, masterNodeDict, "node")
-                    add_node_vlan_relationship(masterNodeDict, vlansDict, masterHostToSwitchDict)
-
+                    
                     result.add_objects(masterLANList)
                     logger.info(f'Added {len(masterLANList)} collected LAN objects for VCF Operations consumption')
                     if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
