@@ -1,0 +1,684 @@
+{
+   "entries": {"resourceKind": [
+      {
+         "resourceKindKey": "vdan",
+         "internalId": "resourceKind:id:3_::_",
+         "adapterKindKey": "NSXIvS"
+      },
+      {
+         "resourceKindKey": "DistributedVirtualPortgroup",
+         "internalId": "resourceKind:id:5_::_",
+         "adapterKindKey": "VMWARE"
+      },
+      {
+         "resourceKindKey": "HostSystem",
+         "internalId": "resourceKind:id:0_::_",
+         "adapterKindKey": "VMWARE"
+      },
+      {
+         "resourceKindKey": "port",
+         "internalId": "resourceKind:id:1_::_",
+         "adapterKindKey": "NSXIvS"
+      },
+      {
+         "resourceKindKey": "lan",
+         "internalId": "resourceKind:id:2_::_",
+         "adapterKindKey": "NSXIvS"
+      },
+      {
+         "resourceKindKey": "VmwareDistributedVirtualSwitch",
+         "internalId": "resourceKind:id:4_::_",
+         "adapterKindKey": "VMWARE"
+      }
+   ]},
+   "dashboards": [{
+      "shared": true,
+      "temporary": false,
+      "hidden": false,
+      "creationTime": 1753118965571,
+      "autoswitchEnabled": false,
+      "importAttempts": 0,
+      "columnProportion": "1-1",
+      "importComplete": true,
+      "description": "",
+      "widgets": [
+         {
+            "collapsed": false,
+            "id": "d7f36a80-ef38-411f-af20-8ec23fb60394",
+            "gridsterCoords": {
+               "w": 2,
+               "x": 3,
+               "h": 6,
+               "y": 1
+            },
+            "type": "ResourceList",
+            "title": "Select a Host",
+            "config": {
+               "refreshInterval": 300,
+               "resource": [],
+               "refreshContent": {"refreshContent": false},
+               "relationshipMode": {"relationshipMode": [
+                  1,
+                  -1
+               ]},
+               "title": "Select a Host",
+               "additionalColumns": [],
+               "mode": "all",
+               "filterMode": "tagPicker",
+               "tagFilter": {
+                  "path": ["/source/kind/kind:resourceKind:id:0_::_"],
+                  "value": {
+                     "bus": [],
+                     "adapterKind": [],
+                     "kind": ["resourceKind:id:0_::_"],
+                     "exclaim": false,
+                     "healthRange": [],
+                     "maintenanceSchedule": [],
+                     "adapterInstance": [],
+                     "collector": [],
+                     "tier": [],
+                     "state": [],
+                     "tag": [],
+                     "day": [],
+                     "status": []
+                  }
+               },
+               "depth": 2,
+               "customFilter": {
+                  "filter": [],
+                  "excludedResources": null,
+                  "includedResources": null
+               },
+               "selectFirstRow": {"selectFirstRow": false},
+               "selfProvider": {"selfProvider": false}
+            },
+            "height": 324,
+            "states": [{
+               "value": "o%3Acolumns%3Da%253Ao%25253Aid%25253Ds%2525253Ah1%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah2%25255Ewidth%25253Dn%2525253A288.57379150390625%255Eo%25253Aid%25253Ds%2525253Ah3%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah4%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah5%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah6%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah7%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah8%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah9%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah10%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah11%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah12%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah13%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah14%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah15%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah16%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253AresourceRating%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah18%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah19%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah20%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah21%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah22%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah23%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah24%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah25%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah26%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah27%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah28%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah29%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah30%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah31%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah32%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah33%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah34%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah35%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah36%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah37%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah38%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah39%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah40%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah41%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah42%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah43%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah44%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah45%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah46%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah47%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100",
+               "key": "permResGrid_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_d7f36a80-ef38-411f-af20-8ec23fb60394"
+            }]
+         },
+         {
+            "collapsed": false,
+            "id": "5fabc40e-824d-4f7c-a85e-b9e4c4f8d3dc",
+            "gridsterCoords": {
+               "w": 4,
+               "x": 9,
+               "h": 6,
+               "y": 1
+            },
+            "type": "AlertList",
+            "title": "Alert List",
+            "config": {},
+            "height": 324,
+            "states": [
+               {
+                  "value": "s%3ADEFINITION",
+                  "key": "permViewMode_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_5fabc40e-824d-4f7c-a85e-b9e4c4f8d3dc"
+               },
+               {
+                  "value": "s%3A%7B%22dateRange%22%3A%22last30Days%22%2C%22dateFrom%22%3Anull%2C%22dateTo%22%3Anull%2C%22timeFrom%22%3Anull%2C%22timeTo%22%3Anull%7D",
+                  "key": "permDateFilter_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_5fabc40e-824d-4f7c-a85e-b9e4c4f8d3dc"
+               }
+            ]
+         },
+         {
+            "collapsed": false,
+            "id": "e901ffcc-6c4a-4df0-9284-de756bcb23ba",
+            "gridsterCoords": {
+               "w": 3,
+               "x": 6,
+               "h": 6,
+               "y": 7
+            },
+            "type": "ResourceList",
+            "title": "Select a Port",
+            "config": {
+               "refreshInterval": 300,
+               "resource": [],
+               "refreshContent": {"refreshContent": false},
+               "relationshipMode": {"relationshipMode": [
+                  1,
+                  -1
+               ]},
+               "title": "Select a Port",
+               "additionalColumns": [
+                  {
+                     "boxLabel": "",
+                     "metricName": "vLAN",
+                     "metricKey": "vlan_id",
+                     "resourceKindId": "resourceKind:id:1_::_"
+                  },
+                  {
+                     "boxLabel": "",
+                     "metricName": "Virtual Machine",
+                     "metricKey": "vm",
+                     "resourceKindId": "resourceKind:id:1_::_"
+                  }
+               ],
+               "mode": "all",
+               "filterMode": "tagPicker",
+               "tagFilter": {
+                  "path": ["/source/kind/kind:resourceKind:id:1_::_"],
+                  "value": {
+                     "bus": [],
+                     "adapterKind": [],
+                     "kind": ["resourceKind:id:1_::_"],
+                     "exclaim": false,
+                     "healthRange": [],
+                     "maintenanceSchedule": [],
+                     "adapterInstance": [],
+                     "collector": [],
+                     "tier": [],
+                     "state": [],
+                     "tag": [],
+                     "day": [],
+                     "status": []
+                  }
+               },
+               "depth": 1,
+               "customFilter": {
+                  "filter": [],
+                  "excludedResources": null,
+                  "includedResources": null
+               },
+               "selectFirstRow": {"selectFirstRow": true},
+               "selfProvider": {"selfProvider": false}
+            },
+            "height": 324,
+            "states": [{
+               "value": "o%3Acolumns%3Da%253Ao%25253Aid%25253Ds%2525253Ah1%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah2%25255Ewidth%25253Dn%2525253A158.0159912109375%255Eo%25253Aid%25253Ds%2525253Ah3%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah4%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah5%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah6%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah7%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah8%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah9%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah10%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah11%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah12%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah13%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah14%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah15%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah16%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253AresourceRating%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah18%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A291.39404296875%255Eo%25253Aid%25253Ds%2525253Ah19%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A61.4537353515625%255Eo%25253Aid%25253Ds%2525253Ah20%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah21%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah22%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah23%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah24%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah25%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah26%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah27%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah28%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah29%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah30%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah31%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah32%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah33%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah34%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah35%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah36%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah37%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah38%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah39%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah40%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah41%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah42%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah43%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah44%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah45%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah46%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah47%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100",
+               "key": "permResGrid_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_e901ffcc-6c4a-4df0-9284-de756bcb23ba"
+            }]
+         },
+         {
+            "collapsed": false,
+            "id": "cc72c3c8-8141-4d5b-8025-685d0ad26a88",
+            "gridsterCoords": {
+               "w": 4,
+               "x": 5,
+               "h": 6,
+               "y": 1
+            },
+            "type": "ResourceList",
+            "title": "LANs",
+            "config": {
+               "refreshInterval": 300,
+               "resource": [],
+               "refreshContent": {"refreshContent": false},
+               "relationshipMode": {"relationshipMode": -1},
+               "title": "LANs",
+               "additionalColumns": [
+                  {
+                     "boxLabel": "",
+                     "metricName": "Status",
+                     "metricKey": "status",
+                     "resourceKindId": "resourceKind:id:2_::_"
+                  },
+                  {
+                     "boxLabel": "",
+                     "metricName": "ESXi Host",
+                     "metricKey": "esxi_host",
+                     "resourceKindId": "resourceKind:id:2_::_"
+                  },
+                  {
+                     "boxLabel": "",
+                     "metricName": "Policy",
+                     "metricKey": "policy",
+                     "resourceKindId": "resourceKind:id:2_::_"
+                  },
+                  {
+                     "boxLabel": "",
+                     "metricName": "Uplink 1",
+                     "metricKey": "uplink1",
+                     "resourceKindId": "resourceKind:id:2_::_"
+                  },
+                  {
+                     "boxLabel": "",
+                     "metricName": "Uplink 2",
+                     "metricKey": "uplink2",
+                     "resourceKindId": "resourceKind:id:2_::_"
+                  }
+               ],
+               "mode": "all",
+               "filterMode": "tagPicker",
+               "tagFilter": {
+                  "path": ["/source/kind/kind:resourceKind:id:2_::_"],
+                  "value": {
+                     "bus": [],
+                     "adapterKind": [],
+                     "kind": ["resourceKind:id:2_::_"],
+                     "exclaim": false,
+                     "healthRange": [],
+                     "maintenanceSchedule": [],
+                     "adapterInstance": [],
+                     "collector": [],
+                     "tier": [],
+                     "state": [],
+                     "tag": [],
+                     "day": [],
+                     "status": []
+                  }
+               },
+               "depth": 1,
+               "customFilter": {
+                  "filter": [],
+                  "excludedResources": null,
+                  "includedResources": null
+               },
+               "selectFirstRow": {"selectFirstRow": false},
+               "selfProvider": {"selfProvider": false}
+            },
+            "height": 324,
+            "states": [{
+               "value": "o%3Acolumns%3Da%253Ao%25253Aid%25253Ds%2525253Ah1%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah2%25255Ewidth%25253Dn%2525253A60.04716491699219%255Eo%25253Aid%25253Ds%2525253Ah3%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah4%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah5%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah6%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah7%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah8%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah9%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah10%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah11%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah12%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah13%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah14%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah15%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah16%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253AresourceRating%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah18%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A84.6134033203125%255Eo%25253Aid%25253Ds%2525253Ah19%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A109.06158447265625%255Eo%25253Aid%25253Ds%2525253Ah20%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A153.741943359375%255Eo%25253Aid%25253Ds%2525253Ah21%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A127.757568359375%255Eo%25253Aid%25253Ds%2525253Ah22%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A128.6021728515625%255Eo%25253Aid%25253Ds%2525253Ah23%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah24%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah25%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah26%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah27%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah28%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah29%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah30%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah31%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah32%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah33%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah34%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah35%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah36%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah37%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah38%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah39%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah40%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah41%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah42%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah43%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah44%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah45%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah46%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah47%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100",
+               "key": "permResGrid_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_cc72c3c8-8141-4d5b-8025-685d0ad26a88"
+            }]
+         },
+         {
+            "collapsed": false,
+            "id": "c4cafb90-9293-4bb6-9af7-ef1afbe5929d",
+            "gridsterCoords": {
+               "w": 5,
+               "x": 1,
+               "h": 6,
+               "y": 7
+            },
+            "type": "ResourceList",
+            "title": "Select a vDAN",
+            "config": {
+               "refreshInterval": 300,
+               "resource": [],
+               "refreshContent": {"refreshContent": false},
+               "relationshipMode": {"relationshipMode": -1},
+               "title": "Select a vDAN",
+               "additionalColumns": [
+                  {
+                     "boxLabel": "",
+                     "metricName": "vLAN",
+                     "metricKey": "vlan_id",
+                     "resourceKindId": "resourceKind:id:3_::_"
+                  },
+                  {
+                     "boxLabel": "",
+                     "metricName": "Virtual Machine",
+                     "metricKey": "vm",
+                     "resourceKindId": "resourceKind:id:3_::_"
+                  },
+                  {
+                     "boxLabel": "",
+                     "metricName": "MAC Address",
+                     "metricKey": "mac",
+                     "resourceKindId": "resourceKind:id:3_::_"
+                  },
+                  {
+                     "boxLabel": "FC Port ID",
+                     "metricName": "fc Port ID",
+                     "metricKey": "fc_port_id",
+                     "resourceKindId": "resourceKind:id:3_::_"
+                  }
+               ],
+               "mode": "all",
+               "filterMode": "tagPicker",
+               "tagFilter": {
+                  "path": ["/source/kind/kind:resourceKind:id:3_::_"],
+                  "value": {
+                     "bus": [],
+                     "adapterKind": [],
+                     "kind": ["resourceKind:id:3_::_"],
+                     "exclaim": false,
+                     "healthRange": [],
+                     "maintenanceSchedule": [],
+                     "adapterInstance": [],
+                     "collector": [],
+                     "tier": [],
+                     "state": [],
+                     "tag": [],
+                     "day": [],
+                     "status": []
+                  }
+               },
+               "depth": 2,
+               "customFilter": {
+                  "filter": [],
+                  "excludedResources": null,
+                  "includedResources": null
+               },
+               "selectFirstRow": {"selectFirstRow": false},
+               "selfProvider": {"selfProvider": false}
+            },
+            "height": 324,
+            "states": [{
+               "value": "o%3Acolumns%3Da%253Ao%25253Aid%25253Ds%2525253Ah1%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah2%25255Ewidth%25253Dn%2525253A63.395263671875%255Eo%25253Aid%25253Ds%2525253Ah3%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah4%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah5%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah6%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah7%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah8%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah9%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah10%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah11%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah12%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah13%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah14%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah15%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah16%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253AresourceRating%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah18%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A66.0068359375%255Eo%25253Aid%25253Ds%2525253Ah19%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A294.3443603515625%255Eo%25253Aid%25253Ds%2525253Ah20%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A153.71026611328125%255Eo%25253Aid%25253Ds%2525253Ah21%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A164.9117431640625%255Eo%25253Aid%25253Ds%2525253Ah22%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah23%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah24%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah25%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah26%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah27%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah28%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah29%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah30%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah31%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah32%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah33%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah34%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah35%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah36%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah37%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah38%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah39%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah40%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah41%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah42%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah43%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah44%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah45%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah46%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah47%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%5EstoreState%3Do%253Asorters%253Da%25253Ao%2525253Aroot%2525253Ds%252525253Adata%2525255Eproperty%2525253Ds%252525253AadapterKind%2525255Edirection%2525253Ds%252525253AASC%2525255Eid%2525253Ds%252525253AadapterKind",
+               "key": "permResGrid_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_c4cafb90-9293-4bb6-9af7-ef1afbe5929d"
+            }]
+         },
+         {
+            "collapsed": false,
+            "id": "5834dc6e-a504-4655-93a9-e31e0a6a4820",
+            "gridsterCoords": {
+               "w": 8,
+               "x": 5,
+               "h": 6,
+               "y": 19
+            },
+            "type": "MetricChart",
+            "title": "Metric Chart",
+            "config": {},
+            "height": 324,
+            "states": [
+               {
+                  "value": "o%3A",
+                  "key": "permMetricChart_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_5834dc6e-a504-4655-93a9-e31e0a6a4820"
+               },
+               {
+                  "value": "s%3A%7B%22dateRange%22%3A%22dashboardTime%22%2C%22dateFrom%22%3Anull%2C%22dateTo%22%3Anull%2C%22timeFrom%22%3Anull%2C%22timeTo%22%3Anull%7D",
+                  "key": "permDateRange1_permMetricChart_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_5834dc6e-a504-4655-93a9-e31e0a6a4820"
+               },
+               {
+                  "value": "b%3A0",
+                  "key": "permBtn_zoomAllGraphs_permMetricChart_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_5834dc6e-a504-4655-93a9-e31e0a6a4820"
+               },
+               {
+                  "value": "b%3A0",
+                  "key": "permBtn_pan_permMetricChart_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_5834dc6e-a504-4655-93a9-e31e0a6a4820"
+               }
+            ]
+         },
+         {
+            "collapsed": false,
+            "id": "e6342442-528f-4622-b395-ac04a48cf0b9",
+            "gridsterCoords": {
+               "w": 4,
+               "x": 1,
+               "h": 6,
+               "y": 19
+            },
+            "type": "MetricPicker",
+            "title": "Metric Picker",
+            "config": {},
+            "height": 324,
+            "states": [
+               {
+                  "value": "b%3A0",
+                  "key": "permFetchCommonMetrics_permMetricPicker_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_e6342442-528f-4622-b395-ac04a48cf0b9"
+               },
+               {
+                  "value": "b%3A0",
+                  "key": "permFetchCollectingMetrics_permMetricPicker_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_e6342442-528f-4622-b395-ac04a48cf0b9"
+               },
+               {
+                  "value": "o%3Acolumns%3Da%253Ao%25253Aid%25253Ds%2525253Ah1",
+                  "key": "permMetricPicker_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_e6342442-528f-4622-b395-ac04a48cf0b9"
+               },
+               {
+                  "value": "b%3A0",
+                  "key": "permFetchPropertyMetrics_permMetricPicker_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_e6342442-528f-4622-b395-ac04a48cf0b9"
+               }
+            ]
+         },
+         {
+            "collapsed": false,
+            "id": "8e4c7274-da91-4a34-aff4-fe4a93a3f4d2",
+            "gridsterCoords": {
+               "w": 2,
+               "x": 1,
+               "h": 6,
+               "y": 1
+            },
+            "type": "ResourceList",
+            "title": "Select a Switch",
+            "config": {
+               "refreshInterval": 300,
+               "resource": [],
+               "refreshContent": {"refreshContent": false},
+               "relationshipMode": {"relationshipMode": 0},
+               "title": "Select a Switch",
+               "additionalColumns": [],
+               "mode": "all",
+               "filterMode": "tagPicker",
+               "tagFilter": {
+                  "path": ["/source/kind/kind:resourceKind:id:4_::_"],
+                  "value": {
+                     "bus": [],
+                     "adapterKind": [],
+                     "kind": ["resourceKind:id:4_::_"],
+                     "exclaim": false,
+                     "healthRange": [],
+                     "maintenanceSchedule": [],
+                     "adapterInstance": [],
+                     "collector": [],
+                     "tier": [],
+                     "state": [],
+                     "tag": [],
+                     "day": [],
+                     "status": []
+                  }
+               },
+               "depth": 1,
+               "customFilter": {
+                  "filter": [],
+                  "excludedResources": null,
+                  "includedResources": null
+               },
+               "selectFirstRow": {"selectFirstRow": false},
+               "selfProvider": {"selfProvider": true}
+            },
+            "height": 324,
+            "states": [{
+               "value": "o%3Acolumns%3Da%253Ao%25253Aid%25253Ds%2525253Ah1%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah2%25255Ewidth%25253Dn%2525253A293.7684020996094%255Eo%25253Aid%25253Ds%2525253Ah3%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah4%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah5%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah6%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah7%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah8%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah9%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah10%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah11%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah12%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah13%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah14%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah15%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah16%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253AresourceRating%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah18%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah19%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah20%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah21%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah22%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah23%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah24%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah25%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah26%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah27%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah28%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah29%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah30%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah31%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah32%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah33%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah34%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah35%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah36%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah37%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah38%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah39%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah40%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah41%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah42%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah43%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah44%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah45%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah46%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah47%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100",
+               "key": "permResGrid_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_8e4c7274-da91-4a34-aff4-fe4a93a3f4d2"
+            }]
+         },
+         {
+            "collapsed": false,
+            "id": "2539de6d-651c-4c43-a575-eb54d571cc97",
+            "gridsterCoords": {
+               "w": 4,
+               "x": 9,
+               "h": 6,
+               "y": 7
+            },
+            "type": "ResourceList",
+            "title": "VLAN/Distributed Port Groups",
+            "config": {
+               "refreshInterval": 300,
+               "resource": [],
+               "refreshContent": {"refreshContent": false},
+               "relationshipMode": {"relationshipMode": 1},
+               "title": "VLAN/Distributed Port Groups",
+               "additionalColumns": [
+                  {
+                     "boxLabel": "VLAN ID",
+                     "metricName": "Configuration|Policies|Security|VLAN ID",
+                     "metricKey": "config|policies|security|vlan_id",
+                     "resourceKindId": "resourceKind:id:5_::_"
+                  },
+                  {
+                     "boxLabel": "Segment ID",
+                     "metricName": "Configuration|Segment ID",
+                     "metricKey": "config|segmentID",
+                     "resourceKindId": "resourceKind:id:5_::_"
+                  },
+                  {
+                     "boxLabel": "Backing Type",
+                     "metricName": "Configuration|Backing Type",
+                     "metricKey": "config|backing_type",
+                     "resourceKindId": "resourceKind:id:5_::_"
+                  }
+               ],
+               "mode": "all",
+               "filterMode": "tagPicker",
+               "tagFilter": {
+                  "path": ["/source/kind/kind:resourceKind:id:5_::_"],
+                  "value": {
+                     "bus": [],
+                     "adapterKind": [],
+                     "kind": ["resourceKind:id:5_::_"],
+                     "exclaim": false,
+                     "healthRange": [],
+                     "maintenanceSchedule": [],
+                     "adapterInstance": [],
+                     "collector": [],
+                     "tier": [],
+                     "state": [],
+                     "tag": [],
+                     "day": [],
+                     "status": []
+                  }
+               },
+               "depth": 1,
+               "customFilter": {
+                  "filter": [],
+                  "excludedResources": null,
+                  "includedResources": null
+               },
+               "selectFirstRow": {"selectFirstRow": false},
+               "selfProvider": {"selfProvider": false}
+            },
+            "height": 324,
+            "states": [{
+               "value": "o%3Acolumns%3Da%253Ao%25253Aid%25253Ds%2525253Ah1%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah2%25255Ewidth%25253Dn%2525253A107.23681640625%255Eo%25253Aid%25253Ds%2525253Ah3%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah4%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah5%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah6%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah7%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah8%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah9%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah10%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah11%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah12%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah13%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah14%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah15%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah16%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253AresourceRating%25255Ehidden%25253Db%2525253A1%255Eo%25253Aid%25253Ds%2525253Ah18%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A88.3529052734375%255Eo%25253Aid%25253Ds%2525253Ah19%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A207.2957763671875%255Eo%25253Aid%25253Ds%2525253Ah20%25255Ehidden%25253Db%2525253A0%25255Ewidth%25253Dn%2525253A178.063232421875%255Eo%25253Aid%25253Ds%2525253Ah21%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah22%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah23%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah24%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah25%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah26%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah27%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah28%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah29%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah30%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah31%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah32%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah33%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah34%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah35%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah36%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah37%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah38%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah39%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah40%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah41%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah42%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah43%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah44%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah45%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah46%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100%255Eo%25253Aid%25253Ds%2525253Ah47%25255Ehidden%25253Db%2525253A1%25255Ewidth%25253Dn%2525253A100",
+               "key": "permResGrid_widget_c3183449-a4be-46c7-beb3-695d2ddbf0f0_2539de6d-651c-4c43-a575-eb54d571cc97"
+            }]
+         },
+         {
+            "collapsed": false,
+            "id": "6dab3d8a-43b3-46b9-8f07-bedf0a5760a1",
+            "gridsterCoords": {
+               "w": 12,
+               "x": 1,
+               "h": 6,
+               "y": 13
+            },
+            "type": "ResourceRelationshipAdvanced",
+            "title": "Object Relationship",
+            "config": {
+               "filterMode": "tagPicker",
+               "tagFilter": null,
+               "resourceId": null,
+               "depth": "2,2",
+               "refreshInterval": 300,
+               "traversalSpecId": "",
+               "refreshContent": {"refreshContent": false},
+               "customFilter": {
+                  "filter": [],
+                  "excludedResources": null,
+                  "includedResources": null
+               },
+               "resourceName": null,
+               "selfProvider": {"selfProvider": false},
+               "title": "Object Relationship"
+            },
+            "height": 324
+         }
+      ],
+      "states": [],
+      "homeTab": false,
+      "rank": 0,
+      "disabled": false,
+      "id": "c3183449-a4be-46c7-beb3-695d2ddbf0f0",
+      "adapterName": "iSDK_NSXIvS",
+      "locked": false,
+      "dashboardNavigations": {},
+      "widgetInteractions": [
+         {
+            "widgetIdProvider": "d7f36a80-ef38-411f-af20-8ec23fb60394",
+            "type": "resourceId",
+            "widgetIdReceiver": "5fabc40e-824d-4f7c-a85e-b9e4c4f8d3dc"
+         },
+         {
+            "widgetIdProvider": "d7f36a80-ef38-411f-af20-8ec23fb60394",
+            "type": "resourceId",
+            "widgetIdReceiver": "c4cafb90-9293-4bb6-9af7-ef1afbe5929d"
+         },
+         {
+            "widgetIdProvider": "d7f36a80-ef38-411f-af20-8ec23fb60394",
+            "type": "resourceId",
+            "widgetIdReceiver": "e901ffcc-6c4a-4df0-9284-de756bcb23ba"
+         },
+         {
+            "widgetIdProvider": "e6342442-528f-4622-b395-ac04a48cf0b9",
+            "type": "metricId",
+            "widgetIdReceiver": "5834dc6e-a504-4655-93a9-e31e0a6a4820"
+         },
+         {
+            "widgetIdProvider": "c4cafb90-9293-4bb6-9af7-ef1afbe5929d",
+            "type": "resourceId",
+            "widgetIdReceiver": "e6342442-528f-4622-b395-ac04a48cf0b9"
+         },
+         {
+            "widgetIdProvider": "8e4c7274-da91-4a34-aff4-fe4a93a3f4d2",
+            "type": "resourceId",
+            "widgetIdReceiver": "d7f36a80-ef38-411f-af20-8ec23fb60394"
+         },
+         {
+            "widgetIdProvider": "8e4c7274-da91-4a34-aff4-fe4a93a3f4d2",
+            "type": "resourceId",
+            "widgetIdReceiver": "cc72c3c8-8141-4d5b-8025-685d0ad26a88"
+         },
+         {
+            "widgetIdProvider": "c4cafb90-9293-4bb6-9af7-ef1afbe5929d",
+            "type": "resourceId",
+            "widgetIdReceiver": "2539de6d-651c-4c43-a575-eb54d571cc97"
+         },
+         {
+            "widgetIdProvider": "e901ffcc-6c4a-4df0-9284-de756bcb23ba",
+            "type": "resourceId",
+            "widgetIdReceiver": "2539de6d-651c-4c43-a575-eb54d571cc97"
+         },
+         {
+            "widgetIdProvider": "cc72c3c8-8141-4d5b-8025-685d0ad26a88",
+            "type": "resourceId",
+            "widgetIdReceiver": "d7f36a80-ef38-411f-af20-8ec23fb60394"
+         },
+         {
+            "widgetIdProvider": "e901ffcc-6c4a-4df0-9284-de756bcb23ba",
+            "type": "resourceId",
+            "widgetIdReceiver": "e6342442-528f-4622-b395-ac04a48cf0b9"
+         },
+         {
+            "widgetIdProvider": "c4cafb90-9293-4bb6-9af7-ef1afbe5929d",
+            "type": "resourceId",
+            "widgetIdReceiver": "6dab3d8a-43b3-46b9-8f07-bedf0a5760a1"
+         },
+         {
+            "widgetIdProvider": "e901ffcc-6c4a-4df0-9284-de756bcb23ba",
+            "type": "resourceId",
+            "widgetIdReceiver": "6dab3d8a-43b3-46b9-8f07-bedf0a5760a1"
+         },
+         {
+            "widgetIdProvider": "cc72c3c8-8141-4d5b-8025-685d0ad26a88",
+            "type": "resourceId",
+            "widgetIdReceiver": "6dab3d8a-43b3-46b9-8f07-bedf0a5760a1"
+         },
+         {
+            "widgetIdProvider": "d7f36a80-ef38-411f-af20-8ec23fb60394",
+            "type": "resourceId",
+            "widgetIdReceiver": "6dab3d8a-43b3-46b9-8f07-bedf0a5760a1"
+         },
+         {
+            "widgetIdProvider": "8e4c7274-da91-4a34-aff4-fe4a93a3f4d2",
+            "type": "resourceId",
+            "widgetIdReceiver": "6dab3d8a-43b3-46b9-8f07-bedf0a5760a1"
+         },
+         {
+            "widgetIdProvider": "2539de6d-651c-4c43-a575-eb54d571cc97",
+            "type": "resourceId",
+            "widgetIdReceiver": "6dab3d8a-43b3-46b9-8f07-bedf0a5760a1"
+         },
+         {
+            "widgetIdProvider": "d7f36a80-ef38-411f-af20-8ec23fb60394",
+            "type": "resourceId",
+            "widgetIdReceiver": "cc72c3c8-8141-4d5b-8025-685d0ad26a88"
+         }
+      ],
+      "lastUpdateUserId": "d0d028fc-af58-4b8a-8f36-8de97a1186b4",
+      "columnCount": 1,
+      "userId": "d0d028fc-af58-4b8a-8f36-8de97a1186b4",
+      "name": "NSX IvS Status By Switch",
+      "gridsterMaxColumns": 12,
+      "lastUpdateTime": 1753824591006
+   }],
+   "uuid": "50474b8f-e543-4da1-8829-1c860c0f5f36"
+}

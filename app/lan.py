@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class Lan(Object):
 
-    def __init__(self, name: str, uuid: str):
+    def __init__(self, name: str, uuid: str, host: str):
         """Initializes a Tenant object that represent the ResourceKind defined in line 15 of the describe.xml file.
 
         :param name: The  unique name of used to display the tenant
@@ -24,6 +24,7 @@ class Lan(Object):
         """
         self.uuid = uuid
         self.name = name
+        self.host = host
         super().__init__(
             key=Key(
                 name=name,
@@ -31,12 +32,12 @@ class Lan(Object):
                 adapter_kind=constants.ADAPTER_KIND,
                 # object_kind should match the key used for the ResourceKind in line 15 of the describe.xml
                 object_kind="lan",
-                identifiers=[Identifier(key="uuid", value=uuid)],
+                identifiers=[Identifier(key="uuid", value=uuid), Identifier(key="host", value=host)],
             )
         )
 
 
-def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, masterSwitchDict: dict, masterLANList: List, masterHostToSwitchDict: dict):
+def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, masterSwitchDict: dict, masterHostToSwitchDict: dict):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -112,20 +113,10 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                             for lanItem in lanList:
                                 if "status" in parsed_lan_output[lanItem]:
                                     uuid = lanItem  + "_switch_" + hostSwitchUUID
-                                    lanObjAlreadyExists = False
-                                    for masterLanObj in masterLANList:
-                                        masterLanObjUUID = masterLanObj.get_identifier_value("uuid")
-                                        if masterLanObjUUID == uuid:
-                                            lanObjAlreadyExists = True
-                                            host.add_parent(masterLanObj)
-                                            lanToHostRelationsAdded += 1
-                                            logger.info(f'Added LAN {lanItem} to Host {hostName} relationship')
-                                            break
-                                    if lanObjAlreadyExists:
-                                        logger.info(f'LAN object {lanItem} already exists')
-                                        continue
-
-                                    lan = Lan(name=lanItem, uuid=uuid)                               
+                                    lan = Lan(name=lanItem, uuid=uuid, host=hostName)
+                                    lan.with_property("esxi_host", hostName)
+                                    lan.with_property("switch_uuid", hostSwitchUUID)
+                                    lan.with_property("switch_name",hostSwitchName)                               
                                     
                                     if "status" in parsed_lan_output[lanItem] and parsed_lan_output[lanItem]['status']:
                                         lan.with_property("status", parsed_lan_output[lanItem]["status"])
@@ -143,16 +134,14 @@ def get_lans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, en
                                         lan.with_property("policy", value=parsed_lan_output[lanItem]["policy"])
                                     else:
                                         logger.info(f'policy is either null or empty. LAN metric policy value was not collected.')
-                                    
-                                    lan.with_property("switch_uuid", hostSwitchUUID)
-                                    lan.with_property("switch_name",hostSwitchName)
-                                    if masterSwitchDict[hostSwitchUUID]:
+                                    if hostSwitchUUID in masterSwitchDict and masterSwitchDict[hostSwitchUUID]:
                                         logger.info(f'LAN switch object with name {hostSwitchName} exists in VCF Operations')
                                         lan.add_parent(masterSwitchDict[hostSwitchUUID])
                                         logger.info(f'Added LAN {lanItem} to Switch {hostSwitchName} relationship on host {hostName}')
                                     else:
                                         logger.info(f'LAN to switch {hostSwitchName} relationship was not created')
-                                    host.add_parent(lan)
+
+                                    lan.add_parent(host)
                                     logger.info(f'Added LAN {lanItem} to Host {hostName} relationship')
                                     lanToHostRelationsAdded += 1
                                     lanObjectList.append(lan)

@@ -68,7 +68,7 @@ def get_distswitch_property(suite_api_client: SuiteApiClient, distSwitch: Object
     return None
 
 
-def get_host_switches(host: Object, vSwitchInstanceListCmdOutput: str, parsedENSSwitchList: List):
+def get_host_switches(host: Object, vSwitchInstanceListCmdOutput: str, parsedENSSwitchList: List, distSwitchesDict: dict):
     vSwitchInstances = []
     hostName = host.get_key().name
     hostToSwitchDict = {}
@@ -124,7 +124,10 @@ def get_host_switches(host: Object, vSwitchInstanceListCmdOutput: str, parsedENS
                     if switchUUID is None or not switchUUID:
                         logger.info(f'Switch UUID is either Null or Empty on host {hostName}')
                         continue
-
+                    
+                    if switchUUID in distSwitchesDict and distSwitchesDict[switchUUID]:
+                        host.add_parent(distSwitchesDict[switchUUID])
+                        logger.info(f'Added host {hostName} to switch {friendlyName}-{switchUUID} relationship')
                     switchEntryDict ={}
                     switchEntryDict['switchUUID'] = switchUUID
                     switchEntryDict['switchID'] = swID

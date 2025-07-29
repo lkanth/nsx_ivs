@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?><alertContent>
+    <AlertDefinitions>
+        <AlertDefinition adapterKind="NSXIvS" disableInBasePolicy="true" id="AlertDefinition-f7ac7517-3527-4b18-b79d-7b4aa3e1f184" name="NSX IvS LAN Status Down" resourceKind="lan" subType="18" type="19">
+            <State severity="automatic">
+                <SymptomSet applyOn="self" operator="and" ref="SymptomDefinition-18d20970-50ee-4fc9-99b8-160ed0ae6658"/>
+                <Impact key="health" type="badge"/>
+            </State>
+        </AlertDefinition>
+    </AlertDefinitions>
+    <SymptomDefinitions>
+        <SymptomDefinition adapterKind="NSXIvS" disableInBasePolicy="true" id="SymptomDefinition-18d20970-50ee-4fc9-99b8-160ed0ae6658" name="Condition_cbb5b4b0-6090-4aaf-b632-67889d9e1020" resourceKind="lan" symptomDefType="condition_self">
+            <State severity="warning">
+                <Condition key="status" operator="=" thresholdType="static" type="property" value="DOWN" valueType="string"/>
+            </State>
+        </SymptomDefinition>
+    </SymptomDefinitions>
+</alertContent>

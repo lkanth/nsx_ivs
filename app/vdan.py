@@ -116,7 +116,8 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                 if "mac" in vdan and vdan['mac']:
                                     vdanObj.with_property("mac", vdan["mac"])
                                 if "vlanID" in vdan and vdan['vlanID'] is not None and vdan['vlanID'] != '':
-                                    vdanObj.with_property("vlan_id", vdan["vlanID"])
+                                    vlanIDStr = str(vdan["vlanID"])
+                                    vdanObj.with_property("vlan_id", vlanIDStr)
                                 else:
                                     defaultVLANID = "None"
                                     vdanObj.with_property("vlan_id", defaultVLANID)
