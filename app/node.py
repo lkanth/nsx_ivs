@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class Node(Object):
 
-    def __init__(self, name: str, uuid: str, host):
+    def __init__(self, name: str, uuid: str):
         """Initializes a Tenant object that represent the ResourceKind defined in line 15 of the describe.xml file.
 
         :param name: The  unique name of used to display the tenant
@@ -24,7 +24,6 @@ class Node(Object):
         """
         self.uuid = uuid
         self.name = name
-        self.host = host
         super().__init__(
             key=Key(
                 name=name,
@@ -36,14 +35,14 @@ class Node(Object):
             )
         )
 
-def get_nodes(ssh: SSHClient, host: Object):
+def get_nodes(ssh: SSHClient, host: Object, masterNodeDict: dict):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
     :param api: AVISession object
     :return: A list of all Switch Objects collected, along with their properties, and metrics
     """
-    nodes = []
+    nodesDict = {}
     command = "nsxdp-cli ens prp stats node list"
     hostName = host.get_key().name
 
@@ -59,19 +58,19 @@ def get_nodes(ssh: SSHClient, host: Object):
                 logger.info(f'Successfully ran the command "{command}" on host {hostName}')
             else:
                 logger.error(f'Command failed with exit status {exit_status}. Error: {error}')
-                return nodes
+                return nodesDict
         except paramiko.AuthenticationException as e:
             logger.error(f'Authentication failed, please verify your credentials. Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
             logger.exception(f'Exception Message: {e}')
-            return nodes
+            return nodesDict
         except paramiko.SSHException as e:
             logger.error(f'SSH error occurred. Exception Type: {type(e).__name__}')
             logger.exception(f'Exception Message: {e}')
-            return nodes
+            return nodesDict
         except Exception as e:
             logger.error(f'Exception occured while executing command "{command}". Exception Type: {type(e).__name__}')
             logger.exception(f'Exception Message: {e}')
-            return nodes
+            return nodesDict
         else:
             logger.info(f'Node collection command output "{result}"')
         try:
@@ -83,43 +82,48 @@ def get_nodes(ssh: SSHClient, host: Object):
                     columns = re.split("\s+", node_results[i])
                     if columns[0].isnumeric():
                         mac = columns[1].strip()
-                        lnode = Node(name = mac, uuid = mac)
-                        lnode.with_property("mac", mac)
-                        lnode.with_property("vlan_id", columns[2].strip())
-                        lnode.with_property("type", columns[3])
-                        lnode.add_metric(Metric(key="node_age", value=columns[4]))
-                        lnode.add_parent(host)
-                        logger.info(f'Added Node {str(columns[0])} to Host {hostName} relationship')
-                        nodes.append(lnode)
-                        i+=1
+                        if mac in masterNodeDict and masterNodeDict[mac]:
+                            masterNodeDict[mac].add_parent(host)
+                            i += 1
+                            continue
+                        else:
+                            lnode = Node(name = mac, uuid = mac)
+                            lnode.with_property("mac", mac)
+                            lnode.with_property("vlan_id", columns[2].strip())
+                            lnode.with_property("type", columns[3])
+                            lnode.add_metric(Metric(key="node_age", value=columns[4]))
+                            lnode.add_parent(host)
+                            logger.info(f'Added Node {str(columns[0])} to Host {hostName} relationship')
+                            nodesDict[mac] = lnode
+                            i += 1
                     else:
                         i += 1
             else:
                 logger.error(f'Node list command output is empty or NULL')
-                return nodes
+                return nodesDict
         except Exception as e:
             logger.error(f'Exception occured while parsing command output "{result}". Exception Type: {type(e).__name__}')
             logger.exception(f'Exception Message: {e}')
-    logger.info(f'Collected {len(nodes)} nodes from host {hostName}') 
-    return nodes
+    logger.info(f'Collected {len(nodesDict)} nodes from host {hostName}') 
+    return nodesDict
 
-def add_node_vlan_relationship(hostName: str, nodes: list, vlansDict: dict, portGroupSwitchDict: dict, masterHostToSwitchDict: dict) -> None:
+def add_node_vlan_relationship(nodesDict: dict, vlansDict: dict, masterHostToSwitchDict: dict) -> None:
 
-    logger.info(f'Starting Node to VLAN relationship creation on host {hostName}')
-    hostSwitchList = masterHostToSwitchDict[hostName]
+    logger.info(f'Starting Node to VLAN relationship creation')
     totalNodeToVLANRelationsAdded = 0
-    for node in nodes:
+    for node in nodesDict.values():
         vlanID = str(node.get_property('vlan_id')[0].value)
         logger.info(f"Node {node.get_key().name}'s VLAN ID is {vlanID}")
         
         distPortGroupsList = vlansDict.get(vlanID)
         if distPortGroupsList:
             for distPortGroup in distPortGroupsList:
-                for hostSwitch in hostSwitchList:
-                    if distPortGroup['switchUUID'] == hostSwitch['switchUUID'] and distPortGroup['DistPortGroupObject']:
-                        node.add_parent(distPortGroup['DistPortGroupObject'])
-                        totalNodeToVLANRelationsAdded += 1
-                        logger.info(f"Added node {node.get_key().name} to VLAN {vlanID} relationship with distributed port group: {distPortGroup['DistPortGroupObject'].get_key().name}")
+                for hostSwitchList in masterHostToSwitchDict.values():
+                    for hostSwitch in hostSwitchList:
+                        if distPortGroup['switchUUID'] == hostSwitch['switchUUID'] and distPortGroup['DistPortGroupObject']:
+                            node.add_parent(distPortGroup['DistPortGroupObject'])
+                            totalNodeToVLANRelationsAdded += 1
+                            logger.info(f"Added node {node.get_key().name} to VLAN {vlanID} relationship with distributed port group: {distPortGroup['DistPortGroupObject'].get_key().name}")
 
-    logger.info(f'{totalNodeToVLANRelationsAdded} Node to VLAN relationships on host {hostName} were created. ') 
+    logger.info(f'{totalNodeToVLANRelationsAdded} Node to VLAN relationships were created. ') 
 

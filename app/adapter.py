@@ -191,7 +191,7 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
 
 def collect(adapter_instance: AdapterInstance) -> CollectResult:
     with Timer(logger, "Collect data"):
-        logger.info(f'Setup adapter for collecting data - Version: 07252025-08:00:00')
+        logger.info(f'Setup adapter for collecting data - Version: 07282025-21:00:00')
         result = CollectResult()
         logger.info(f'Setup adapter for collecting data - Successful')
         currentLoggingLevel = logger.getEffectiveLevel()
@@ -280,6 +280,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                 RelAddedToVMObjects = []
                 masterLANList = []
                 masterHostToSwitchDict = {}
+                masterNodeDict = {}
                 hostCount = 0
         
                 for host in hosts:
@@ -416,13 +417,13 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             for lanObj in lans:
                                 masterLANList.append(lanObj)
                             
-                            nodes = get_nodes(sshClient, host)
-                            if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
-                                log_debug_objects_list(result, nodes, "node")  
-                            result.add_objects(nodes)
-                            logger.info(f'Added {len(nodes)} collected node objects from host {hostName} for VCF Operations consumption')
-
-                            add_node_vlan_relationship(hostName, nodes, vlansDict, portGroupSwitchDict, masterHostToSwitchDict)
+                            nodesDict = get_nodes(sshClient, host, masterNodeDict)
+                            if not masterNodeDict or len(masterNodeDict) == 0:
+                                masterNodeDict = nodesDict
+                            else:
+                                for key, value in nodesDict.items():
+                                    masterNodeDict[key] = value
+                            
 
                             if len(vmObjectList) > 0:
                                 for vmObject in vmObjectList:
@@ -447,6 +448,13 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                     if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
                         log_debug_objects_dict(result, distSwitchesDict, "VmwareDistributedVirtualSwitch")
 
+                    for nodeObj in masterNodeDict.values():
+                        result.add_object(nodeObj)
+                    logger.info(f'Added {len(masterNodeDict)} node objects for VCF Operations consumption')
+                    if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
+                        log_debug_objects_dict(result, masterNodeDict, "node")
+                    add_node_vlan_relationship(masterNodeDict, vlansDict, masterHostToSwitchDict)
+
                     result.add_objects(masterLANList)
                     logger.info(f'Added {len(masterLANList)} collected LAN objects for VCF Operations consumption')
                     if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
@@ -456,9 +464,8 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                     logger.info(f'Added {len(hosts)} related Host objects for VCF Operations consumption')
                     if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
                         log_debug_objects_list(result, hosts, "HostSystem")
-
-                    for vm in RelAddedToVMObjects:                                        
-                        result.add_object(vm)
+                                      
+                    result.add_objects(RelAddedToVMObjects)
                     logger.info(f'Added {len(RelAddedToVMObjects)} related VM objects for VCF Operations consumption')
                     if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
                         log_debug_objects_list(result, RelAddedToVMObjects, "VirtualMachine")
