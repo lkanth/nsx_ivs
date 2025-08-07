@@ -94,16 +94,17 @@ def get_adapter_definition() -> AdapterDefinition:
         vdan = definition.define_object_type("vdan", "NSX IvS vDAN")
         vdan.define_string_identifier("uuid", "UUID")
         vdan.define_string_identifier("host", "ESXi Server")
-        vdan.define_string_property("mac", "MAC Address")
+        vdan.define_string_property("mac_address", "MAC Address")
         vdan.define_string_property("vlan_id", "vLAN")
-        vdan.define_numeric_property("fc_port_id", "fc Port ID")
+        vdan.define_string_property("fc_port_id", "fc Port ID")
         vdan.define_string_property("esxi_host", "ESXI Host")
         vdan.define_string_property("vm", "Virtual Machine")
         vdan.define_numeric_property("vdan_id", "VDAN Identifier")
         vdan.define_numeric_property("switch_id", "Switch ID")
         vdan.define_string_property("switch_uuid", "Switch UUID")
         vdan.define_string_property("switch_name", "Switch Name")
-        vdan.define_metric("vdan_age", "VDAN Age")
+        vdan.define_string_property("current_lcore", "Current LCORE")
+        vdan.define_metric("vdan_age", "VDAN Age", Units.TIME.SECONDS)
         vdan.define_metric("lanA_prpTxPkts", "LAN-A PRP Transmitted Packets")
         vdan.define_metric("lanA_nonPRPPkts", "LAN-A non PRP Transmitted Packets")
         vdan.define_metric("lanA_txBytes", "LAN-A Transmitted Bytes")
@@ -120,6 +121,10 @@ def get_adapter_definition() -> AdapterDefinition:
         node.define_string_property("mac", "MAC Address")
         node.define_string_property("vlan_id", "vLAN")
         node.define_string_property("type", "Node Type")
+        node.define_string_property("current_lcore", "Current LCORE")
+        node.define_string_property("redbox_mac", "RedBox MAC")
+        node.define_string_property("vdan_mac", "VDAN MAC")
+
         node.define_metric("node_age", "Node Age")
 
         lan = definition.define_object_type("lan", "NSX IvS LAN")
@@ -405,10 +410,11 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             vdansList = get_vdans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
                             vDANVMList = add_vdan_vm_relationship(vdansList, vmMacNameDict, vmsByName, client)
                             add_vdan_vlan_relationship(hostName, vdansList, vlansDict, portGroupSwitchDict)
+                        
                                                  
                             lanList = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, distSwitchesDict, masterHostToSwitchDict)
                             
-                            nodesDict = get_nodes(sshClient, host, masterNodeDict)
+                            nodesDict = get_nodes(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterNodeDict)
                             if not masterNodeDict or len(masterNodeDict) == 0:
                                 masterNodeDict = nodesDict
                             else:

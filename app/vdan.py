@@ -1,6 +1,7 @@
 #  Copyright 2023 VMware, Inc.
 #  SPDX-License-Identifier: Apache-2.0
 import logging
+import json
 import re
 from typing import List
 from aria.ops.timer import Timer
@@ -37,7 +38,7 @@ class vDAN(Object):
             )
         )
 
-def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, masterHostToSwitchDict: dict):
+def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: list, masterHostToSwitchDict: dict):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -54,7 +55,9 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
     with Timer(logger, f'vDAN objects collection on {host.get_key().name} '):
         if vSwitchInstanceListCmdOutput:
             for ensSwitchID in ensSwitchIDList:
-                commands.append("nsxdp-cli ens prp stats vdan list -s " + str(ensSwitchID))
+                commands.append("nsxdp-cli ens prp stats vdan list -j 1 -s " + str(ensSwitchID))
+            for ensSwitchID in ensSwitchIDList:
+                commands.append("nsxdp-cli ens prp vdan list -j 1 -s " + str(ensSwitchID))
         
         numOfCommands = len(commands)
         if numOfCommands > 0:
@@ -99,8 +102,20 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                         hostSwitchName = "UNKNOWN"
                         hostSwitchUUID = "UNKNOWN"
                     try:
-                        vdanResults = parse_vdan_output(results[i])
-                        for vdan in vdanResults:
+                        #vdanResults = parse_vdan_output(results[i])
+                        try:
+                            vdanStatResults = json.loads(results[i])
+                        except Exception as e:
+                            logger.info(f'No VDANs found on switch {ensSwitchIDList[i]} on host {hostName}')
+                            continue
+                        try:
+                            vdanListResultsIndex = i + len(ensSwitchIDList)
+                            if vdanListResultsIndex < len(results) and results[vdanListResultsIndex]:
+                                vdanListResults = json.loads(results[vdanListResultsIndex])
+                        except Exception as e:
+                            logger.info(f'No VDANs found on switch {ensSwitchIDList[i]} on host {hostName}')
+                            continue
+                        for vdan in vdanStatResults:
                             if "vdanIndex" in vdan and vdan['vdanIndex'] is not None and vdan['vdanIndex'] != '':
                                 uuid = str(vdan["vdanIndex"]) + "_" + hostName                    
                                 vdanObj = vDAN(
@@ -113,23 +128,40 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                     vdanObj.with_property("vdan_id",vdan["vdanIndex"])
                                 else:
                                     continue
-                                if "mac" in vdan and vdan['mac']:
-                                    vdanObj.with_property("mac", vdan["mac"])
+                                
+                                foundLcore = False
+                                for vdanPlain in vdanListResults:
+                                    if "vdanIndex" in vdanPlain and vdanPlain['vdanIndex'] is not None and vdanPlain['vdanIndex'] == vdan['vdanIndex']: 
+                                        if "currLcore" in vdanPlain and vdanPlain['currLcore'] is not None and vdanPlain['currLcore'] != '':
+                                            vdanObj.with_property("current_lcore",str(vdanPlain['currLcore']))
+                                            foundLcore = True
+                                            break
+                                if not foundLcore:
+                                    vdanObj.with_property("current_lcore","")
+
+                                if "macAddr" in vdan and vdan['macAddr']:
+                                    vdanObj.with_property("mac_address", vdan["macAddr"])
+                                else:
+                                    vdanObj.with_property("mac_address", "")
                                 if "vlanID" in vdan and vdan['vlanID'] is not None and vdan['vlanID'] != '':
                                     vlanIDStr = str(vdan["vlanID"])
                                     vdanObj.with_property("vlan_id", vlanIDStr)
                                 else:
-                                    defaultVLANID = "None"
-                                    vdanObj.with_property("vlan_id", defaultVLANID)
+                                    vdanObj.with_property("vlan_id", "")
                                 if "fcPortID" in vdan and vdan['fcPortID'] is not None and vdan['fcPortID'] != '':
-                                    vdanObj.with_property("fc_port_id", vdan["fcPortID"])
-                                if "vDANAge" in vdan and vdan['vDANAge'] is not None and vdan['vDANAge'] != '':
-                                    vdanObj.with_metric("vdan_age", vdan["vDANAge"])
+                                    vdanObj.with_property("fc_port_id", str(vdan["fcPortID"]))
+                                else:
+                                    vdanObj.with_property("fc_port_id", "")
+                                if "createTimeInUS" in vdan and vdan['createTimeInUS'] is not None and vdan['createTimeInUS'] != '' and "retrieveTimeInUS" in vdan and vdan['retrieveTimeInUS'] is not None and vdan['retrieveTimeInUS'] != '':
+                                    vdanAge = round((vdan['retrieveTimeInUS'] - vdan['createTimeInUS']) / constants.MICROSECONDS)
+                                    vdanObj.with_metric("vdan_age", vdanAge)
+                                else:
+                                    vdanObj.with_metric("vdan_age", 0)
 
                                 if "lanA" in vdan and "prpTxPkts" in vdan["lanA"] and vdan["lanA"]["prpTxPkts"] is not None and vdan["lanA"]["prpTxPkts"] != '':
                                     vdanObj.with_metric("lanA_prpTxPkts", vdan["lanA"]["prpTxPkts"])   
-                                if "lanA" in vdan and "nonPRPPkts" in vdan["lanA"] and vdan["lanA"]["nonPRPPkts"] is not None and vdan["lanA"]["nonPRPPkts"] != '':
-                                    vdanObj.with_metric("lanA_nonPRPPkts", vdan["lanA"]["nonPRPPkts"])
+                                if "lanA" in vdan and "nonPRPTxPkts" in vdan["lanA"] and vdan["lanA"]["nonPRPTxPkts"] is not None and vdan["lanA"]["nonPRPTxPkts"] != '':
+                                    vdanObj.with_metric("lanA_nonPRPPkts", vdan["lanA"]["nonPRPTxPkts"])
                                 if "lanA" in vdan and "txBytes" in vdan["lanA"] and vdan["lanA"]["txBytes"] is not None and vdan["lanA"]["txBytes"] != '':
                                     vdanObj.with_metric("lanA_txBytes", vdan["lanA"]["txBytes"]) 
                                 if "lanA" in vdan and "txDrops" in vdan["lanA"] and vdan["lanA"]["txDrops"] is not None and vdan["lanA"]["txDrops"] != '':
@@ -139,8 +171,8 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
 
                                 if "lanB" in vdan and "prpTxPkts" in vdan["lanB"] and vdan["lanB"]["prpTxPkts"] is not None and vdan["lanB"]["prpTxPkts"] != '':
                                     vdanObj.with_metric("lanB_prpTxPkts", vdan["lanB"]["prpTxPkts"])   
-                                if "lanB" in vdan and "nonPRPPkts" in vdan["lanB"] and vdan["lanB"]["nonPRPPkts"] is not None and vdan["lanB"]["nonPRPPkts"] != '':
-                                    vdanObj.with_metric("lanB_nonPRPPkts", vdan["lanB"]["nonPRPPkts"])
+                                if "lanB" in vdan and "nonPRPTxPkts" in vdan["lanB"] and vdan["lanB"]["nonPRPTxPkts"] is not None and vdan["lanB"]["nonPRPTxPkts"] != '':
+                                    vdanObj.with_metric("lanB_nonPRPPkts", vdan["lanB"]["nonPRPTxPkts"])
                                 if "lanB" in vdan and "txBytes" in vdan["lanB"] and vdan["lanB"]["txBytes"] is not None and vdan["lanB"]["txBytes"] != '':
                                     vdanObj.with_metric("lanB_txBytes", vdan["lanB"]["txBytes"]) 
                                 if "lanB" in vdan and "txDrops" in vdan["lanB"] and vdan["lanB"]["txDrops"] is not None and vdan["lanB"]["txDrops"] != '':
@@ -157,8 +189,8 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                 vdanToHostRelationsAdded += 1                  
                                 vdanObjects.append(vdanObj)
                             else:
-                                logger.error(f'VDAN Index does not exist in parsed VDAN list command output: {vdanResults}') 
-                    except:
+                                logger.error(f'VDAN Index does not exist in parsed VDAN list command output: {vdanStatResults}') 
+                    except Exception as e:
                         logger.error(f"Exception occured while parsing command output {results[i]}. Exception Type: {type(e).__name__}")
                         logger.exception(f"Exception Message: {e}")
             else:
@@ -231,7 +263,7 @@ def add_vdan_vm_relationship(vdans: List, vmMacNameDict:dict, vmsByName: dict, s
     with Timer(logger, f'VDAN to VM relationship creation'):
         for vdanObj in vdans:
             try:
-                vmMacAddress = vdanObj.get_property('mac')[0].value
+                vmMacAddress = vdanObj.get_property('mac_address')[0].value
                 if vmMacAddress in vmMacNameDict:
                     vmName = vmMacNameDict[vmMacAddress]
                     vms = vmsByName.get(vmName)

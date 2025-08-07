@@ -39,7 +39,7 @@ class Port(Object):
         )
 
 
-def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: List, masterHostToSwitchDict: dict):
+def get_ports(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: list, masterHostToSwitchDict: dict):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 

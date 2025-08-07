@@ -68,7 +68,7 @@ def get_distswitch_property(suite_api_client: SuiteApiClient, distSwitch: Object
     return None
 
 
-def get_host_switches(host: Object, vSwitchInstanceListCmdOutput: str, parsedENSSwitchList: List, distSwitchesDict: dict):
+def get_host_switches(host: Object, vSwitchInstanceListCmdOutput: str, parsedENSSwitchList: list, distSwitchesDict: dict):
     vSwitchInstances = []
     hostName = host.get_key().name
     hostToSwitchDict = {}
