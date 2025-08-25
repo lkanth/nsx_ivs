@@ -36,7 +36,7 @@ class Node(Object):
             )
         )
 
-def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: list, masterNodeDict: dict):
+def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: list, masterNodeDict: dict, vlansDict: dict, masterHostToSwitchDict: dict, hostVDANSList: list):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -47,6 +47,9 @@ def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
     commands = []
     results = []
     hostName = host.get_key().name
+    totalNodeToVLANRelationsAdded = 0
+    totalNodeToVDANRelationsAdded = 0
+    hostSwitchList = masterHostToSwitchDict[hostName]
 
     # Logging key errors can help diagnose issues with the adapter, and prevent unexpected behavior.
     with Timer(logger, f'Node object collection on host {hostName}'):
@@ -83,22 +86,21 @@ def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                         return nodesDict
                     else:
                         logger.info(f'Node collection command output "{output}"')
-                results[0] = """NodeIndex Node MAC          vlanID Type Red Box MAC       CurrLcore vDAN MAC          sanA sanB supSeqA supAAge(s) supSeqB supBAge(s) NodeAge(s)
-================================================================================================================================================
-31        08:00:06:9d:35:9c 204    DAN  bc:e7:12:e4:df:e4 1         00:50:56:96:d3:8a 0    0    2027    0          2027    0          442837  
-34        08:00:06:9d:34:f8 201    DAN  34:73:2d:35:48:04 0         00:50:56:96:ae:a0 0    0    39222   0          39222   0          350822  
-39        08:00:06:9d:34:eb 201    DAN  34:73:2d:35:48:04 0         00:50:56:96:ae:a0 0    0    39202   1          39202   1          350802  
-41        08:00:06:9d:34:fa 201    DAN  34:73:2d:35:48:04 0         00:50:56:96:ae:a0 0    0    39225   0          39225   0          350845  
-46        08:00:06:9d:36:aa 207    DAN  6c:13:d5:ab:ef:84 1         00:50:56:96:86:41 0    0    44759   0          44759   0          349229  
-52        08:00:06:9d:35:50 203    DAN  bc:e7:12:e4:dc:a4 3         00:50:56:96:df:dd 0    0    31366   0          31366   0          350796  
-61        08:00:06:9d:35:59 203    DAN  bc:e7:12:e4:dc:a4 3         00:50:56:96:df:dd 0    0    31372   0          31372   0          350799  
-72        08:00:06:9d:35:86 204    DAN  bc:e7:12:e4:df:e4 1         00:50:56:96:d3:8a 0    0    2014    0          2014    0          349317  
-74        08:00:06:9d:36:4e 206    DAN  04:5f:b9:cf:1d:a4 3         00:50:56:96:ba:0c 0    0    19966   0          19966   0          449500  
-76        08:00:06:9d:36:c7 207    DAN  6c:13:d5:ab:ef:84 1         00:50:56:96:86:41 0    0    44701   0          44701   0          349229      """
                 if len(results) == len(commands):
                     for i in range(len(ensSwitchIDList)):
                         try:
                             logger.info(f'Parsing node collection result')
+                            hostSwitchUUID = None
+                            foundHostSwitch = False
+                            for hostSwitch in hostSwitchList:
+                                logger.info(f"Host switch ID: {hostSwitch['switchID']} - Node switch ID {str(ensSwitchIDList[i])}.")
+                                if hostSwitch['switchID'] == ensSwitchIDList[i]:
+                                    hostSwitchUUID = hostSwitch['switchUUID']
+                                    foundHostSwitch = True
+                                    break
+                            if not foundHostSwitch:
+                                logger.info(f'Node switch UUID not found for switch ID {str(ensSwitchIDList[i])}. Will use UNKNOWN')
+                                hostSwitchUUID = "UNKNOWN"
                             if results[i]:
                                 node_results = re.split("\n", results[i])
                                 j = 2
@@ -114,10 +116,12 @@ def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                             else:
                                                 lnode = Node(name = mac, uuid = mac)
                                                 lnode.with_property("mac", mac)
+                                                nodeVLANID = ""
                                                 if columns[2] is not None and columns[2] != '': 
-                                                    lnode.with_property("vlan_id", columns[2].strip())
+                                                    nodeVLANID = columns[2].strip()
+                                                    lnode.with_property("vlan_id", nodeVLANID)
                                                 else:
-                                                    lnode.with_property("vlan_id", "")
+                                                    lnode.with_property("vlan_id", nodeVLANID)
                                                 if columns[3] and columns[3].strip():
                                                     lnode.with_property("type", columns[3].strip())
                                                 else:
@@ -130,12 +134,35 @@ def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                                     lnode.with_property("current_lcore", str(columns[5].strip()))
                                                 else:
                                                     lnode.with_property("current_lcore", "")
+                                                nodeVDANMac = ""
                                                 if columns[6] and columns[6].strip():
-                                                    lnode.with_property("vdan_mac", str(columns[6].strip()))
+                                                    nodeVDANMac = str(columns[6].strip())
+                                                    lnode.with_property("vdan_mac", nodeVDANMac)
                                                 else:
-                                                    lnode.with_property("vdan_mac", "")
-                                                lnode.add_metric(Metric(key="node_age", value=columns[13]))
+                                                    lnode.with_property("vdan_mac", nodeVDANMac)
+                                                if columns[9] is not None and columns[9] != '' and columns[9].isnumeric(): 
+                                                    lnode.with_metric("sup_seq_a",int(columns[9]))
+                                                else:
+                                                    lnode.with_metric("sup_seq_a",0)
+                                                if columns[11] is not None and columns[11] != '' and columns[11].isnumeric(): 
+                                                    lnode.with_metric("sup_seq_b",int(columns[11]))
+                                                else:
+                                                    lnode.with_metric("sup_seq_b",0)
+                                                if columns[13] is not None and columns[13] != '' and columns[13].isnumeric(): 
+                                                    lnode.with_metric("node_age",int(columns[13]))
+                                                else:
+                                                    lnode.with_metric("node_age",0)
                                                 lnode.add_parent(host)
+                                                if nodeVLANID is not None and nodeVLANID != '':
+                                                    if add_node_vlan_relationship(lnode, nodeVLANID, hostSwitchUUID, vlansDict):
+                                                        totalNodeToVLANRelationsAdded += 1
+                                                else:
+                                                     logger.info(f'VLAN ID is null or empty. Node {str(columns[1])} to VLAN relationship was not created.')
+                                                if nodeVDANMac:
+                                                    if add_node_vdan_relationship(lnode, nodeVDANMac, hostVDANSList):
+                                                        totalNodeToVDANRelationsAdded += 1
+                                                else:
+                                                     logger.info(f'VDAN Mac is null or empty. Node {str(columns[1])} to VDAN relationship was not created.')
                                                 logger.info(f'Node MAC {str(columns[1])} VLAN ID {columns[2]} Type {columns[3]} Redbox Mac {columns[4]} Current LCORE {columns[4]}')
                                                 logger.info(f'Added Node {str(columns[1])} to Host {hostName} relationship')
                                                 nodesDict[mac] = lnode
@@ -155,26 +182,34 @@ def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                 logger.info(f'No commands to run to gather node objects')
         else:
             logger.info(f'"nsxdp-cli vswitch instance list command output is empty: "{vSwitchInstanceListCmdOutput}')
-    logger.info(f'Collected {len(nodesDict)} nodes from host {hostName}') 
+    logger.info(f'Collected {len(nodesDict)} nodes from host {hostName}')
+    logger.info(f'{totalNodeToVLANRelationsAdded} Node to VLAN relationships were created on host {hostName} ')
+    logger.info(f'{totalNodeToVDANRelationsAdded} Node to VDAN relationships were created on host {hostName} ')  
     return nodesDict
 
-def add_node_vlan_relationship(nodesDict: dict, vlansDict: dict, masterHostToSwitchDict: dict) -> None:
-
+def add_node_vlan_relationship(node: Object, nodeVLANID, hostSwitchUUID: str, vlansDict: dict):
     logger.info(f'Starting Node to VLAN relationship creation')
-    totalNodeToVLANRelationsAdded = 0
-    for node in nodesDict.values():
-        vlanID = str(node.get_property('vlan_id')[0].value)
-        logger.info(f"Node {node.get_key().name}'s VLAN ID is {vlanID}")
-        
-        distPortGroupsList = vlansDict.get(vlanID)
-        if distPortGroupsList:
-            for distPortGroup in distPortGroupsList:
-                for hostSwitchList in masterHostToSwitchDict.values():
-                    for hostSwitch in hostSwitchList:
-                        if distPortGroup['switchUUID'] == hostSwitch['switchUUID'] and distPortGroup['DistPortGroupObject']:
-                            node.add_parent(distPortGroup['DistPortGroupObject'])
-                            totalNodeToVLANRelationsAdded += 1
-                            logger.info(f"Added node {node.get_key().name} to VLAN {vlanID} relationship with distributed port group: {distPortGroup['DistPortGroupObject'].get_key().name}")
+    if nodeVLANID.isnumeric():
+        nodeVLANID = str(nodeVLANID)
+    distPortGroupsList = vlansDict.get(nodeVLANID)
+    if distPortGroupsList:
+        for distPortGroup in distPortGroupsList:
+            if distPortGroup['switchUUID'] == hostSwitchUUID and distPortGroup['DistPortGroupObject']:
+                node.add_parent(distPortGroup['DistPortGroupObject'])
+                distPortGroup['currentNumRelatedNodes'] = distPortGroup['currentNumRelatedNodes'] + 1
+                logger.info(f"Added node {node.get_key().name} to VLAN {nodeVLANID} relationship with distributed port group: {distPortGroup['DistPortGroupObject'].get_key().name}")
+                return True
+    return False
 
-    logger.info(f'{totalNodeToVLANRelationsAdded} Node to VLAN relationships were created. ') 
+def add_node_vdan_relationship(node: Object, nodeVDANMac: str, hostVDANSList: list):
+    logger.info(f'Starting VDAN to Node relationship creation')
+    for vdanObj in hostVDANSList:
+        vDANMacAddress = str(vdanObj.get_property('mac_address')[0].value)
+        if vDANMacAddress == nodeVDANMac:
+            node.add_parent(vdanObj)
+            logger.info(f"Added VDAN {vdanObj.get_key().name} to Node {node.get_key().name} relationship")
+            return True
+    return False
+    
+    
 

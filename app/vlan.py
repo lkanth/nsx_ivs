@@ -10,6 +10,9 @@ from aria.ops.object import Object
 from aria.ops.suite_api_client import SuiteApiClient
 from constants import VCENTER_ADAPTER_KIND
 from constants import VCFOPS_DISTPORTGROUP_VLANID_PROPERTY_KEY
+from constants import DISTPORTGROUP_NSXIVS_NUMNODES_RELATED
+from constants import DISTPORTGROUP_NSXIVS_NUMNODES_RELATED_DEC
+
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,17 @@ def get_vlans(suite_api_client: SuiteApiClient, adapter_instance_id: str, conten
                     distPortGroup.add_parent(switchesByUUID.get(entryDict['switchUUID']))
                 vlanID = get_distportgroup_property(suite_api_client, distPortGroup, VCFOPS_DISTPORTGROUP_VLANID_PROPERTY_KEY)
                 if vlanID is not None and vlanID != '' and vlanID.casefold() != 'none'.casefold():
+                    numRelatedNodes = get_distportgroup_property(suite_api_client, distPortGroup, DISTPORTGROUP_NSXIVS_NUMNODES_RELATED)
+                    if numRelatedNodes is None or numRelatedNodes == '':
+                        entryDict['numRelatedNodes'] = 0
+                    else:
+                        entryDict['numRelatedNodes'] = int(numRelatedNodes)
+                    entryDict['currentNumRelatedNodes'] = 0
+                    hasNumRelatedNodesDecreased = get_distportgroup_property(suite_api_client, distPortGroup, DISTPORTGROUP_NSXIVS_NUMNODES_RELATED_DEC)
+                    if hasNumRelatedNodesDecreased:
+                        entryDict['hasNumRelatedNodesDecreased'] = hasNumRelatedNodesDecreased
+                    else:
+                        entryDict['hasNumRelatedNodesDecreased'] = "NO"
                     vlansDict.setdefault(vlanID, []).append(entryDict)
         logger.info(f'VLAN IDs retrieved {vlansDict}')  
 
@@ -90,5 +104,5 @@ def get_vcenter_switch_portgroups(suite_api_client: SuiteApiClient, adapter_inst
     except Exception as e:
         logger.error(f'Exception occured while getting a list of host systems from VCF Operations. Exception Type: {type(e).__name__}')
         logger.exception(f'Exception Message: {e}')
-    return  portGroupSwitchDict    
+    return portGroupSwitchDict    
     

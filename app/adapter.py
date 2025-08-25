@@ -30,6 +30,8 @@ from constants import ADAPTER_NAME
 from constants import HOST_IDENTIFIER
 from constants import VCENTER_ADAPTER_KIND
 from constants import LOGGER_DEBUG_LEVEL_IVS
+from constants import DISTPORTGROUP_NSXIVS_NUMNODES_RELATED
+from constants import DISTPORTGROUP_NSXIVS_NUMNODES_RELATED_DEC
 
 from vlan import get_vlans
 
@@ -124,8 +126,9 @@ def get_adapter_definition() -> AdapterDefinition:
         node.define_string_property("current_lcore", "Current LCORE")
         node.define_string_property("redbox_mac", "RedBox MAC")
         node.define_string_property("vdan_mac", "VDAN MAC")
-
-        node.define_metric("node_age", "Node Age")
+        node.define_metric("node_age", "Node Age", Units.TIME.SECONDS)
+        node.define_metric("sup_seq_a", "SupSeqA")
+        node.define_metric("sup_seq_b", "SupSeqB")
 
         lan = definition.define_object_type("lan", "NSX IvS LAN")
         lan.define_string_identifier("uuid", "UUID")
@@ -287,6 +290,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                 RelAddedToVMObjects = []
                 masterHostToSwitchDict = {}
                 masterNodeDict = {}
+                masterVDANList = []
                 hostCount = 0
         
                 for host in hosts:
@@ -406,21 +410,24 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             portsList = get_ports(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)                       
                             vmObjectList, vmMacNameDict = add_port_relationships(vSwitchInstanceListCmdOutput, vlansDict, portsList, vmsByName, client)
                             
-
-                            vdansList = get_vdans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
-                            vDANVMList = add_vdan_vm_relationship(vdansList, vmMacNameDict, vmsByName, client)
-                            add_vdan_vlan_relationship(hostName, vdansList, vlansDict, portGroupSwitchDict)
-                        
-                                                 
+                            hostVDANSList = get_vdans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterHostToSwitchDict)
+                            if not masterVDANList or len(masterVDANList) == 0:
+                                masterVDANList = hostVDANSList
+                            else:
+                                if len(hostVDANSList) > 0:
+                                    for vDANObj in hostVDANSList:
+                                        masterVDANList.append(vDANObj)
+                            vDANVMList = add_vdan_vm_relationship(hostVDANSList, vmMacNameDict, vmsByName, client)
+                            add_vdan_vlan_relationship(hostName, hostVDANSList, vlansDict)
+                                             
                             lanList = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, distSwitchesDict, masterHostToSwitchDict)
                             
-                            nodesDict = get_nodes(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterNodeDict)
+                            nodesDict = get_nodes(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterNodeDict, vlansDict, masterHostToSwitchDict, hostVDANSList)
                             if not masterNodeDict or len(masterNodeDict) == 0:
                                 masterNodeDict = nodesDict
                             else:
                                 for key, value in nodesDict.items():
                                     masterNodeDict[key] = value
-                            
 
                             if len(vmObjectList) > 0:
                                 for vmObject in vmObjectList:
@@ -432,16 +439,16 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
 
                             result.add_objects(portsList)
                             logger.info(f'Added {len(portsList)} collected port objects from host {hostName} for VCF Operations consumption')
-                            
-                            result.add_objects(vdansList)
-                            logger.info(f'Added {len(vdansList)} collected VDAN objects from host {hostName} for VCF Operations consumption')
+
+                            result.add_objects(hostVDANSList)
+                            logger.info(f'Added {len(hostVDANSList)} collected VDAN objects from host {hostName} for VCF Operations consumption')
                             
                             result.add_objects(lanList)
                             logger.info(f'Added {len(lanList)} collected LAN objects from host {hostName} for VCF Operations consumption')
                             
                             if currentLoggingLevel == LOGGER_DEBUG_LEVEL_IVS:
                                 log_debug_objects_list(result, portsList, "port")
-                                log_debug_objects_list(result, vdansList, "vdan")
+                                log_debug_objects_list(result, hostVDANSList, "vdan")
                                 log_debug_objects_list(result, lanList, "lan")    
                                                                    
                             sshClient.close()
@@ -458,7 +465,6 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         result.add_object(switch)
                     logger.info(f'Added {len(distSwitchesDict)} related distributed switch objects for VCF Operations consumption')
 
-                    add_node_vlan_relationship(masterNodeDict, vlansDict, masterHostToSwitchDict)
                     for nodeObj in masterNodeDict.values():
                         result.add_object(nodeObj)
                     logger.info(f'Added {len(masterNodeDict)} node objects for VCF Operations consumption')
@@ -470,10 +476,15 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                     logger.info(f'Added {len(RelAddedToVMObjects)} related VM objects for VCF Operations consumption')
                     
                     distPortGroupObjectsAdded = 0
-                    for distPortObjectList in vlansDict.values():
-                        for distPortObjectEntry in distPortObjectList:
-                            if "DistPortGroupObject" in distPortObjectEntry:
-                                distPortObject = distPortObjectEntry['DistPortGroupObject']
+                    for distPortGroupObjectList in vlansDict.values():
+                        for distPortGroupObjectEntry in distPortGroupObjectList:
+                            if "DistPortGroupObject" in distPortGroupObjectEntry:
+                                distPortObject = distPortGroupObjectEntry['DistPortGroupObject']
+                                distPortObject.with_property(DISTPORTGROUP_NSXIVS_NUMNODES_RELATED, distPortGroupObjectEntry['currentNumRelatedNodes'])
+                                if distPortGroupObjectEntry['currentNumRelatedNodes'] < distPortGroupObjectEntry['numRelatedNodes']:
+                                    distPortObject.with_property(DISTPORTGROUP_NSXIVS_NUMNODES_RELATED_DEC, "Yes")
+                                else:
+                                    distPortObject.with_property(DISTPORTGROUP_NSXIVS_NUMNODES_RELATED_DEC, "No")
                                 result.add_object(distPortObject)
                                 distPortGroupObjectsAdded += 1
                     logger.info(f'Added {distPortGroupObjectsAdded} related Distributed Port objects for VCF Operations consumption')

@@ -117,7 +117,8 @@ def get_vdans(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                             continue
                         for vdan in vdanStatResults:
                             if "vdanIndex" in vdan and vdan['vdanIndex'] is not None and vdan['vdanIndex'] != '':
-                                uuid = str(vdan["vdanIndex"]) + "_" + hostName                    
+                                uuid = str(vdan["vdanIndex"]) + "_" + hostName
+
                                 vdanObj = vDAN(
                                     name=str(vdan["vdanIndex"]),
                                     uuid=uuid,
@@ -290,7 +291,7 @@ def add_vdan_vm_relationship(vdans: List, vmMacNameDict:dict, vmsByName: dict, s
     logger.info(f'Added VM relationships to {len(RelAddedToVMObjects)} Vdans')
     return RelAddedToVMObjects
 
-def add_vdan_vlan_relationship(hostName: str, vdans: list, vlansDict: dict, portGroupSwitchDict: dict) -> None:
+def add_vdan_vlan_relationship(hostName: str, vdans: list, vlansDict: dict) -> None:
 
     logger.info(f'Starting VDAN to VLAN relationship creation on host {hostName}')
     totalVDANToVLANRelationsAdded = 0
@@ -307,7 +308,7 @@ def add_vdan_vlan_relationship(hostName: str, vdans: list, vlansDict: dict, port
                     totalVDANToVLANRelationsAdded += 1
                     logger.info(f"Added VDAN {vdan.get_key().name} to VLAN {vlanID} relationship with distributed port group: {distPortGroup['DistPortGroupObject'].get_key().name}")
 
-    logger.info(f'{totalVDANToVLANRelationsAdded} VDAN to VLAN relationships on host {hostName} were created. ')  
+    logger.info(f'{totalVDANToVLANRelationsAdded} VDAN to VLAN relationships on host {hostName} were created. ')
 
 
 
