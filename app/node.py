@@ -2,13 +2,13 @@
 #  SPDX-License-Identifier: Apache-2.0
 import logging
 import re
-import json
 from aria.ops.timer import Timer
 import constants
 from aria.ops.data import Metric
 from aria.ops.object import Identifier
 from aria.ops.object import Key
 from aria.ops.object import Object
+from redbox import RedBox
 import paramiko
 from paramiko import SSHClient
 
@@ -36,7 +36,7 @@ class Node(Object):
             )
         )
 
-def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: list, masterNodeDict: dict, vlansDict: dict, masterHostToSwitchDict: dict, hostVDANSList: list):
+def get_nodes_redbox(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, ensSwitchIDList: list, masterNodeDict: dict, masterRedBoxDict: dict, vlansDict: dict, masterHostToSwitchDict: dict, hostVDANSList: list):
     """Fetches all tenant objects from the API; instantiates a Tenant object per JSON tenant object, and returns a list
     of all tenants
 
@@ -44,6 +44,7 @@ def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
     :return: A list of all Switch Objects collected, along with their properties, and metrics
     """
     nodesDict = {}
+    redBoxDict = {}
     commands = []
     results = []
     hostName = host.get_key().name
@@ -109,6 +110,9 @@ def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                     if columns[0] is not None and columns[0] != '' and columns[0].isnumeric():
                                         if columns[1] and columns[1].strip(): 
                                             mac = columns[1].strip()
+                                            if not mac or not is_mac_address(mac):
+                                                j += 1
+                                                continue
                                             if mac in masterNodeDict and masterNodeDict[mac]:
                                                 masterNodeDict[mac].add_parent(host)
                                                 j += 1
@@ -126,10 +130,12 @@ def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                                     lnode.with_property("type", columns[3].strip())
                                                 else:
                                                     lnode.with_property("type", "")
+                                                redBoxMac = ""
                                                 if columns[4] and columns[4].strip():
-                                                    lnode.with_property("redbox_mac", columns[4].strip())
+                                                    redBoxMac = columns[4].strip()
+                                                    lnode.with_property("redbox_mac", redBoxMac)
                                                 else:
-                                                    lnode.with_property("redbox_mac", "")
+                                                    lnode.with_property("redbox_mac", redBoxMac)
                                                 if columns[5] is not None and columns[5] != '': 
                                                     lnode.with_property("current_lcore", str(columns[5].strip()))
                                                 else:
@@ -152,9 +158,22 @@ def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
                                                     lnode.with_metric("node_age",int(columns[13]))
                                                 else:
                                                     lnode.with_metric("node_age",0)
+                                                
+                                                if is_mac_address(redBoxMac):
+                                                    if redBoxMac and redBoxMac in masterRedBoxDict and masterRedBoxDict[redBoxMac]:
+                                                        logger.info(f'RedBox mac object {redBoxMac} already exists')
+                                                        lnode.add_parent(masterRedBoxDict[redBoxMac])
+                                                    elif redBoxMac and redBoxMac in redBoxDict and redBoxDict[redBoxMac]:
+                                                        lnode.add_parent(redBoxDict[redBoxMac])
+                                                    else:
+                                                        redBoxObj = RedBox(name = redBoxMac, uuid = redBoxMac)
+                                                        redBoxObj.with_property("mac_address",redBoxMac)
+                                                        lnode.add_parent(redBoxObj)
+                                                        redBoxDict[redBoxMac] = redBoxObj
+
                                                 lnode.add_parent(host)
-                                                if nodeVLANID is not None and nodeVLANID != '':
-                                                    if add_node_vlan_relationship(lnode, nodeVLANID, hostSwitchUUID, vlansDict):
+                                                if nodeVLANID is not None and nodeVLANID != '' and mac:
+                                                    if add_node_vlan_relationship(lnode, mac, nodeVLANID, hostSwitchUUID, vlansDict):
                                                         totalNodeToVLANRelationsAdded += 1
                                                 else:
                                                      logger.info(f'VLAN ID is null or empty. Node {str(columns[1])} to VLAN relationship was not created.')
@@ -183,11 +202,12 @@ def get_nodes(ssh: SSHClient, host: Object, vSwitchInstanceListCmdOutput: str, e
         else:
             logger.info(f'"nsxdp-cli vswitch instance list command output is empty: "{vSwitchInstanceListCmdOutput}')
     logger.info(f'Collected {len(nodesDict)} nodes from host {hostName}')
+    logger.info(f'Collected {len(redBoxDict)} RedBox objects from host {hostName}')
     logger.info(f'{totalNodeToVLANRelationsAdded} Node to VLAN relationships were created on host {hostName} ')
     logger.info(f'{totalNodeToVDANRelationsAdded} Node to VDAN relationships were created on host {hostName} ')  
-    return nodesDict
+    return nodesDict, redBoxDict
 
-def add_node_vlan_relationship(node: Object, nodeVLANID, hostSwitchUUID: str, vlansDict: dict):
+def add_node_vlan_relationship(node: Object, nodeMac: str, nodeVLANID, hostSwitchUUID: str, vlansDict: dict):
     logger.info(f'Starting Node to VLAN relationship creation')
     if nodeVLANID.isnumeric():
         nodeVLANID = str(nodeVLANID)
@@ -197,6 +217,10 @@ def add_node_vlan_relationship(node: Object, nodeVLANID, hostSwitchUUID: str, vl
             if distPortGroup['switchUUID'] == hostSwitchUUID and distPortGroup['DistPortGroupObject']:
                 node.add_parent(distPortGroup['DistPortGroupObject'])
                 distPortGroup['currentNumRelatedNodes'] = distPortGroup['currentNumRelatedNodes'] + 1
+                if distPortGroup['currentRelatedNodes']: 
+                    distPortGroup['currentRelatedNodes'] = distPortGroup['currentRelatedNodes'] + "," + nodeMac
+                else:
+                    distPortGroup['currentRelatedNodes'] = nodeMac
                 logger.info(f"Added node {node.get_key().name} to VLAN {nodeVLANID} relationship with distributed port group: {distPortGroup['DistPortGroupObject'].get_key().name}")
                 return True
     return False
@@ -210,6 +234,14 @@ def add_node_vdan_relationship(node: Object, nodeVDANMac: str, hostVDANSList: li
             logger.info(f"Added VDAN {vdanObj.get_key().name} to Node {node.get_key().name} relationship")
             return True
     return False
+
+def is_mac_address(mac_address: str):
+    mac_pattern = r"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
+    if re.match(mac_pattern, mac_address):
+        return True    
+    return False
+    
+
     
     
 

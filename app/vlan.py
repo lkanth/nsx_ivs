@@ -11,7 +11,9 @@ from aria.ops.suite_api_client import SuiteApiClient
 from constants import VCENTER_ADAPTER_KIND
 from constants import VCFOPS_DISTPORTGROUP_VLANID_PROPERTY_KEY
 from constants import DISTPORTGROUP_NSXIVS_NUMNODES_RELATED
-from constants import DISTPORTGROUP_NSXIVS_NUMNODES_RELATED_DEC
+from constants import DISTPORTGROUP_NSXIVS_HAS_RELATED_DISCONNECTED
+from constants import DISTPORTGROUP_NSXIVS_RELATED_NODES
+from constants import DISTPORTGROUP_NSXIVS_RELATED_NODES_DISCONNECTED
 
 
 logger = logging.getLogger(__name__)
@@ -43,17 +45,34 @@ def get_vlans(suite_api_client: SuiteApiClient, adapter_instance_id: str, conten
                     distPortGroup.add_parent(switchesByUUID.get(entryDict['switchUUID']))
                 vlanID = get_distportgroup_property(suite_api_client, distPortGroup, VCFOPS_DISTPORTGROUP_VLANID_PROPERTY_KEY)
                 if vlanID is not None and vlanID != '' and vlanID.casefold() != 'none'.casefold():
-                    numRelatedNodes = get_distportgroup_property(suite_api_client, distPortGroup, DISTPORTGROUP_NSXIVS_NUMNODES_RELATED)
-                    if numRelatedNodes is None or numRelatedNodes == '':
-                        entryDict['numRelatedNodes'] = 0
+                    
+                    numRelatedNodesProp = get_distportgroup_property(suite_api_client, distPortGroup, DISTPORTGROUP_NSXIVS_NUMNODES_RELATED)
+                    if numRelatedNodesProp is None or numRelatedNodesProp == '':
+                        entryDict['numRelatedNodesProp'] = 0
                     else:
-                        entryDict['numRelatedNodes'] = int(numRelatedNodes)
+                        entryDict['numRelatedNodesProp'] = int(float(numRelatedNodesProp))
+                    
                     entryDict['currentNumRelatedNodes'] = 0
-                    hasNumRelatedNodesDecreased = get_distportgroup_property(suite_api_client, distPortGroup, DISTPORTGROUP_NSXIVS_NUMNODES_RELATED_DEC)
-                    if hasNumRelatedNodesDecreased:
-                        entryDict['hasNumRelatedNodesDecreased'] = hasNumRelatedNodesDecreased
+                    entryDict['currentRelatedNodes'] = ""
+                    
+                    hasSomeRelatedNodesDisconnectedProp = get_distportgroup_property(suite_api_client, distPortGroup, DISTPORTGROUP_NSXIVS_HAS_RELATED_DISCONNECTED)
+                    if hasSomeRelatedNodesDisconnectedProp:
+                        entryDict['hasSomeRelatedNodesDisconnectedProp'] = hasSomeRelatedNodesDisconnectedProp
                     else:
-                        entryDict['hasNumRelatedNodesDecreased'] = "NO"
+                        entryDict['hasSomeRelatedNodesDisconnectedProp'] = "NO"
+                    
+                    relatedVLANNodesProp = get_distportgroup_property(suite_api_client, distPortGroup, DISTPORTGROUP_NSXIVS_RELATED_NODES)
+                    if relatedVLANNodesProp:
+                        entryDict['relatedVLANNodesProp'] = relatedVLANNodesProp
+                    else:
+                        entryDict['relatedVLANNodesProp'] = ''
+                    
+                    relatedVLANNodesDisconnectedProp = get_distportgroup_property(suite_api_client, distPortGroup, DISTPORTGROUP_NSXIVS_RELATED_NODES_DISCONNECTED)
+                    if relatedVLANNodesDisconnectedProp:
+                        entryDict['relatedVLANNodesDisconnectedProp'] = relatedVLANNodesDisconnectedProp
+                    else:
+                        entryDict['relatedVLANNodesDisconnectedProp'] = ''
+                    
                     vlansDict.setdefault(vlanID, []).append(entryDict)
         logger.info(f'VLAN IDs retrieved {vlansDict}')  
 

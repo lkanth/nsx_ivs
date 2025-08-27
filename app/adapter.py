@@ -31,7 +31,9 @@ from constants import HOST_IDENTIFIER
 from constants import VCENTER_ADAPTER_KIND
 from constants import LOGGER_DEBUG_LEVEL_IVS
 from constants import DISTPORTGROUP_NSXIVS_NUMNODES_RELATED
-from constants import DISTPORTGROUP_NSXIVS_NUMNODES_RELATED_DEC
+from constants import DISTPORTGROUP_NSXIVS_HAS_RELATED_DISCONNECTED
+from constants import DISTPORTGROUP_NSXIVS_RELATED_NODES
+from constants import DISTPORTGROUP_NSXIVS_RELATED_NODES_DISCONNECTED
 
 from vlan import get_vlans
 
@@ -45,8 +47,7 @@ from vdan import get_vdans
 from vdan import add_vdan_vlan_relationship
 from vdan import add_vdan_vm_relationship
 
-from node import get_nodes
-from node import add_node_vlan_relationship
+from node import get_nodes_redbox
 
 from lan import get_lans
 
@@ -117,6 +118,10 @@ def get_adapter_definition() -> AdapterDefinition:
         vdan.define_metric("lanB_txBytes", "LAN-B Transmitted Bytes")
         vdan.define_metric("lanB_txDrops", "LAN-B Transmitted Drops")
         vdan.define_metric("lanB_supTxPkts", "LAN-B Transmitted Packets Suppressed")
+
+        redbox = definition.define_object_type("redbox", "NSX IvS Red Box")
+        redbox.define_string_identifier("uuid", "UUID")
+        redbox.define_string_property("mac_address", "MAC Address")
 
         node = definition.define_object_type("node", "NSX IvS Node")
         node.define_string_identifier("uuid", "UUID")
@@ -201,7 +206,7 @@ def test(adapter_instance: AdapterInstance) -> TestResult:
 
 def collect(adapter_instance: AdapterInstance) -> CollectResult:
     with Timer(logger, "Collect data"):
-        logger.info(f'Setup adapter for collecting data - Version: 07292025-16:00:00')
+        logger.info(f'Setup adapter for collecting data - Version: 08272025-16:00:00')
         result = CollectResult()
         logger.info(f'Setup adapter for collecting data - Successful')
         currentLoggingLevel = logger.getEffectiveLevel()
@@ -290,6 +295,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                 RelAddedToVMObjects = []
                 masterHostToSwitchDict = {}
                 masterNodeDict = {}
+                masterRedBoxDict = {}
                 masterVDANList = []
                 hostCount = 0
         
@@ -422,12 +428,18 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                                              
                             lanList = get_lans(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, distSwitchesDict, masterHostToSwitchDict)
                             
-                            nodesDict = get_nodes(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterNodeDict, vlansDict, masterHostToSwitchDict, hostVDANSList)
+                            nodesDict,redBoxDict = get_nodes_redbox(sshClient, host, vSwitchInstanceListCmdOutput, ensSwitchIDList, masterNodeDict, masterRedBoxDict, vlansDict, masterHostToSwitchDict, hostVDANSList)
                             if not masterNodeDict or len(masterNodeDict) == 0:
                                 masterNodeDict = nodesDict
                             else:
                                 for key, value in nodesDict.items():
                                     masterNodeDict[key] = value
+                            
+                            if not masterRedBoxDict or len(masterRedBoxDict) == 0:
+                                masterRedBoxDict = redBoxDict
+                            else:
+                                for key, value in redBoxDict.items():
+                                    masterRedBoxDict[key] = value
 
                             if len(vmObjectList) > 0:
                                 for vmObject in vmObjectList:
@@ -469,6 +481,10 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         result.add_object(nodeObj)
                     logger.info(f'Added {len(masterNodeDict)} node objects for VCF Operations consumption')
 
+                    for redBoxObj in masterRedBoxDict.values():
+                        result.add_object(redBoxObj)
+                    logger.info(f'Added {len(masterRedBoxDict)} Red Box objects for VCF Operations consumption')
+
                     result.add_objects(hosts)
                     logger.info(f'Added {len(hosts)} related Host objects for VCF Operations consumption')
                                           
@@ -481,10 +497,25 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                             if "DistPortGroupObject" in distPortGroupObjectEntry:
                                 distPortObject = distPortGroupObjectEntry['DistPortGroupObject']
                                 distPortObject.with_property(DISTPORTGROUP_NSXIVS_NUMNODES_RELATED, distPortGroupObjectEntry['currentNumRelatedNodes'])
-                                if distPortGroupObjectEntry['currentNumRelatedNodes'] < distPortGroupObjectEntry['numRelatedNodes']:
-                                    distPortObject.with_property(DISTPORTGROUP_NSXIVS_NUMNODES_RELATED_DEC, "Yes")
+                                distPortObject.with_property(DISTPORTGROUP_NSXIVS_RELATED_NODES, distPortGroupObjectEntry['currentRelatedNodes'])
+                                currentRelatedNodesArray = []
+                                relatedVLANNodesPropArray = []
+                                if distPortGroupObjectEntry['currentRelatedNodes']:
+                                    currentRelatedNodesArray = distPortGroupObjectEntry['currentRelatedNodes'].split(',')
+                                if distPortGroupObjectEntry['relatedVLANNodesProp']:
+                                    relatedVLANNodesPropArray = distPortGroupObjectEntry['relatedVLANNodesProp'].split(',')
+                                
+                                currentRelatedNodesArraySet = set(currentRelatedNodesArray)
+                                relatedVLANNodesPropArraySet = set(relatedVLANNodesPropArray)
+                                diffSet = sorted(relatedVLANNodesPropArraySet - currentRelatedNodesArraySet)
+                                nodesDisconnected = ""
+                                if diffSet and len(diffSet) > 0:
+                                    nodesDisconnected = ", ".join(str(item) for item in diffSet)
+                                distPortObject.with_property(DISTPORTGROUP_NSXIVS_RELATED_NODES_DISCONNECTED, nodesDisconnected)
+                                if nodesDisconnected:
+                                    distPortObject.with_property(DISTPORTGROUP_NSXIVS_HAS_RELATED_DISCONNECTED, "YES")
                                 else:
-                                    distPortObject.with_property(DISTPORTGROUP_NSXIVS_NUMNODES_RELATED_DEC, "No")
+                                    distPortObject.with_property(DISTPORTGROUP_NSXIVS_HAS_RELATED_DISCONNECTED, "NO")
                                 result.add_object(distPortObject)
                                 distPortGroupObjectsAdded += 1
                     logger.info(f'Added {distPortGroupObjectsAdded} related Distributed Port objects for VCF Operations consumption')
@@ -495,6 +526,7 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                         log_debug_objects_list(result, hosts, "HostSystem")
                         log_debug_objects_list(result, RelAddedToVMObjects, "VirtualMachine")
                         log_debug_objects_dict(result, vlansDict, "DistributedVirtualPortgroup")
+                        log_debug_objects_dict(result, masterRedBoxDict, "redbox")
                 except Exception as e:
                     logger.error(f"Exception occured while adding objects for VCF Operations consumption. Exception Type: {type(e).__name__}")
                     logger.error(f'Unexpected collection error: {e}')
