@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?><alertContent>
     <AlertDefinitions>
-        <AlertDefinition adapterKind="NSXIvS" disableInBasePolicy="true" id="AlertDefinition-f7ac7517-3527-4b18-b79d-7b4aa3e1f184" name="NSX IvS LAN Status Down" resourceKind="lan" subType="18" type="19">
+        <AlertDefinition adapterKind="NSXIvS" disableInBasePolicy="true" id="AlertDefinition-f7ac7517-3527-4b18-b79d-7b4aa3e1f184" name="NSX-IVS LAN Status Down" resourceKind="lan" subType="18" type="19">
             <State severity="automatic">
                 <SymptomSet applyOn="self" operator="and" ref="SymptomDefinition-18d20970-50ee-4fc9-99b8-160ed0ae6658"/>
                 <Impact key="health" type="badge"/>

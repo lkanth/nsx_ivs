@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?><alertContent>
+    <AlertDefinitions>
+        <AlertDefinition adapterKind="VMWARE" disableInBasePolicy="true" id="AlertDefinition-bdbe5ee9-0295-48a8-a196-9538867c39d0" name="NSX-IVS One or more VLAN related nodes have disconnected" resourceKind="DistributedVirtualPortgroup" subType="18" type="19">
+            <State severity="automatic">
+                <SymptomSet applyOn="self" operator="and" ref="SymptomDefinition-54692e93-b460-4846-be54-796c03137123"/>
+                <Impact key="health" type="badge"/>
+            </State>
+        </AlertDefinition>
+    </AlertDefinitions>
+    <SymptomDefinitions>
+        <SymptomDefinition adapterKind="VMWARE" disableInBasePolicy="true" id="SymptomDefinition-54692e93-b460-4846-be54-796c03137123" name="Condition_89ccd374-f593-4f2f-a407-6a3ec212660a" resourceKind="DistributedVirtualPortgroup" symptomDefType="condition_self">
+            <State severity="warning">
+                <Condition key="nsxivs|has_rel_nodes_disconnected" operator="=" thresholdType="static" type="property" value="YES" valueType="string"/>
+            </State>
+        </SymptomDefinition>
+    </SymptomDefinitions>
+</alertContent>
